@@ -157,8 +157,10 @@ def create_feature_importance_heatmap_by_region(FIG_DIR: Path, results_df: pd.Da
 
     pivot_df_normalized = pivot_df.div(pivot_df.max(axis=1), axis=0)
     top_features = pivot_df_normalized.mean(axis=1).nlargest(10).index
-    plt.figure(figsize=(12, 8))
-    sns.heatmap(pivot_df_normalized.loc[top_features], cmap="YlGnBu", linewidths=0.5)
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(pivot_df_normalized.loc[top_features], cmap="coolwarm", linewidths=0.5)
+    plt.title(f'XGBoost Feature Importance by Region')
+    plt.tight_layout()
     plt.savefig(FIG_DIR / f'XGBoost_feature_importance_region.png')
     plt.close()
 
