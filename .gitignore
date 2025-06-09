@@ -1,0 +1,33 @@
+# Ignore all data files
+data/*
+# But keep these samples
+!data/final_data_MIDW.csv
+!data/weather_power_MIDW.csv
+!data/eia_hourly_MIDW.csv
+
+# Ignore all figures
+figs/*
+# But keep these samples
+!figs/MIDW_correl_matrix.png
+!figs/MIDW_t2m_vs_energy_demand.png
+!figs/MIDW_demand_over_time.png
+!figs/MIDW_avg_hrly_demand_by_month.png
+!figs/MIDW_avg_hrly_solar_gen_by_month.png
+!figs/MIDW_avg_hrly_wind_gen_by_month.png
+!figs/MIDW_sol_gen_vs_sol_irr.png
+!figs/MIDW_wnd_gen_vs_wnd_speed.png
+!figs/XGBoost_train_results_by_region.png
+!figs/XGBoost_feature_importance_region.png
+
+
+# Python + OS junk
+__pycache__/
+*.pyc
+*.pkl
+*.log
+.DS_Store
+.env
+
+# PyCharm and virtualenv
+.idea/
+venv/
