@@ -13,7 +13,7 @@ import statsmodels.api as sm
 from xgboost import XGBRegressor
 from xgboost import plot_importance
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
@@ -77,16 +77,18 @@ def display_XG_analytics(region: str, best_model, X_test: pd.DataFrame, y_test: 
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     mae = mean_absolute_error(y_true, y_pred)
     mape = np.mean(np.abs(percent_error[mask])) * 100
+    r2 = r2_score(y_true, y_pred)
 
     print(f"RMSE: {rmse}")
     print(f"MAE: {mae}")
     print(f"Mean Absolute Percentage Error: {mape:.2f}%")
+    print(f"R2: {r2}")
 
     plot_importance(best_model, max_num_features=15)
     plt.title(f'{region} XGBoost Feature Importance')
     plt.savefig(FIG_DIR / f'{region}_XGBoost_feature_importance.png')
 
-    return rmse, mae, mape
+    return rmse, mae, mape, r2
 
 
 def train_test_result_XGBoost(region: str, df: pd.DataFrame, split_date: str, param_grid: dict, FIG_DIR: Path):
@@ -94,9 +96,9 @@ def train_test_result_XGBoost(region: str, df: pd.DataFrame, split_date: str, pa
     y_train, X_train, y_test, X_test = XG_train_test_time_split(df, split_date)
     grid = fit_best_XG(param_grid, X_train, y_train, n_splits=4)
     best_model = grid.best_estimator_
-    rmse, mae, mape = display_XG_analytics(region, best_model, X_train, y_train, FIG_DIR)
+    rmse, mae, mape, r2 = display_XG_analytics(region, best_model, X_train, y_train, FIG_DIR)
 
-    return best_model, rmse, mae, mape, grid.best_params_
+    return best_model, rmse, mae, mape, r2, grid.best_params_
 
 def run_regional_XGBoost(DATA_DIR: Path, FIG_DIR: Path, regions: list, split_date: str, param_grid: dict):
     """Parse through provided regions and run XGBoost for each while logging results in data frame for comparison"""
@@ -106,7 +108,7 @@ def run_regional_XGBoost(DATA_DIR: Path, FIG_DIR: Path, regions: list, split_dat
     for region in regions:
         print(f"Running XGBoost for {region}")
         df = load_final_data(DATA_DIR, region)
-        best_model, rmse, mae, mape, best_params = train_test_result_XGBoost(region, df, split_date, param_grid, FIG_DIR)
+        best_model, rmse, mae, mape, r2, best_params = train_test_result_XGBoost(region, df, split_date, param_grid, FIG_DIR)
 
         results.append({
             'Region': region,
@@ -114,7 +116,8 @@ def run_regional_XGBoost(DATA_DIR: Path, FIG_DIR: Path, regions: list, split_dat
             'Best_Params': best_params,
             'RMSE': rmse,
             'MAE': mae,
-            'MAPE': mape
+            'MAPE': mape,
+            'R2': r2
         })
 
     results_df = pd.DataFrame(results)
@@ -170,7 +173,7 @@ def plot_XGBoost_analytics(FIG_DIR: Path, results_df: pd.DataFrame):
     """Creates comparison plots for each region result evaluation metrics from best model as well as feature import"""
     results_df_sorted = results_df.sort_values(by="Region")
 
-    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+    fig, axes = plt.subplots(4, 1, figsize=(12, 10), sharex=True)
 
     sns.barplot(data=results_df_sorted, x='Region', y='RMSE', ax=axes[0], palette='Blues_r', hue='Region', legend=False)
     axes[0].set_title("RMSE by Region")
@@ -183,7 +186,12 @@ def plot_XGBoost_analytics(FIG_DIR: Path, results_df: pd.DataFrame):
     sns.barplot(data=results_df_sorted, x='Region', y='MAPE', ax=axes[2], palette='Reds_r', hue='Region', legend=False)
     axes[2].set_title("MAPE by Region")
     axes[2].set_ylabel("MAPE")
-    axes[2].set_xlabel("Region")
+    # axes[2].set_xlabel("Region")
+
+    sns.barplot(data=results_df_sorted, x='Region', y='R2', ax=axes[3], palette='Purples_r', hue='Region', legend=False)
+    axes[3].set_title("R2 by Region")
+    axes[3].set_ylabel("R2")
+    axes[3].set_xlabel("Region")
 
     plt.tight_layout()
     plt.savefig(FIG_DIR / f'XGBoost_train_results_by_region.png')
