@@ -9,8 +9,32 @@ weather and demand data to identify underserved regions with investment potentia
 - Use clustering and predictive models to support planning for solar/wind investment
 
 ## Setup
-- Please see the requirements.txt for any dependencies needed to install.  We will use Python and a Make file in order to 
-execute and acquire the data.
+To get a local copy of the project:
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/mhorns/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply.git
+cd ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply
+```
+
+### 2. Create and activate a virtual environment
+```bash
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+```
+
+### 3. Install required packages
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Run sample pipeline
+```bash
+make all # runs sample or 'full' which creates whole pipeline over 40 minutes of downloads
+```
 
 ## Data
 
