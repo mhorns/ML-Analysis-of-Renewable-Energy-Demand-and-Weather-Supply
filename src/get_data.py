@@ -44,7 +44,7 @@ def get_and_set_region_coordinates(iso_map:dict):
         .astype(float)
     )
 
-    airport_df['State'] = airport_df['State'].str.title()  # Convert 'ALABAMA' → 'Alabama'
+    airport_df['State'] = airport_df['State'].str.title()  # Convert 'ALABAMA' to 'Alabama'
 
     url = "https://ourairports.com/data/airports.csv"
     our_airports_df = pd.read_csv(url)
@@ -115,7 +115,7 @@ def fetch_eia_data(base_url:str, API_KEY:str, region:list, start:datetime, end:d
         offset += length
         total = int(result["response"]["total"])
         if offset >= total:
-            break  # Al data fetched
+            break  # All data fetched
 
     return pd.DataFrame(all_data)
 
