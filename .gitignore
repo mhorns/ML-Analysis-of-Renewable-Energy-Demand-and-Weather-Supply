@@ -2,6 +2,9 @@
 data/*
 # But keep these samples
 !data/final_data_MIDW.csv
+!data/final_data_train_MIDW.csv
+!data/final_data_test_MIDW.csv
+!data/final_data_val_MIDW.csv
 !data/weather_power_MIDW.csv
 !data/eia_hourly_MIDW.csv
 
