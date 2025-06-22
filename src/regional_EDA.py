@@ -32,11 +32,25 @@ def load_and_merge_region_data(DATA_DIR: Path, region: str):
     return df
 
 def add_calendar_features(df):
-    """Create new calendar features to account for seasonailty"""
+    """Create new calendar features to account for seasonality and cycles"""
+    # Cyclical encodings
+    df['hour_sin'] = np.sin(2 * np.pi * df['HR'] / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df['HR'] / 24)
+
+    df['month_sin'] = np.sin(2 * np.pi * df['MO'] / 12)
+    df['month_cos'] = np.cos(2 * np.pi * df['MO'] / 12)
+
     # Create date metrics
     df['day_of_year'] = df['period'].dt.dayofyear.astype(int)
+    df['doy_sin'] = np.sin(2 * np.pi * df['day_of_year'] / 365)
+    df['doy_cos'] = np.cos(2 * np.pi * df['day_of_year'] / 365)
+
     df['day_of_week'] = df['period'].dt.dayofweek.astype(int)
+    df['dow_sin'] = np.sin(2 * np.pi * df['day_of_week'] / 7)
+    df['dow_cos'] = np.cos(2 * np.pi * df['day_of_week'] / 7)
+
     df['is_weekend'] = df['day_of_week'].isin([5,6]).astype(int)
+
     return df
 
 def add_pct_features(df):
@@ -79,10 +93,12 @@ def add_rolling_means(df, cols, window=720):
 
     return df
 
+
 def drop_cols(df):
     """Drop extra columns that are not needed or may cause leakage to target"""
     df = df.drop(['Demand', 'Net generation', 'datetime'], axis=1)
     df.dropna(inplace=True)
+
     return df
 
 def create_correlation_matrix(FIG_DIR: Path, region: str, df: pd.DataFrame):
@@ -162,6 +178,26 @@ def create_EDA_plots(FIG_DIR: Path, region: str, df: pd.DataFrame):
     plt.savefig(FIG_DIR / f'{region}_avg_hrly_solar_gen_by_month.png')
     plt.close()
 
+def split_and_save_data(df, DATA_DIR, region):
+    """Split df 70/20/10 and save to CSV unless they already exist."""
+
+    n = len(df)
+    splits = {
+        "train": df.iloc[:int(n * 0.7)],
+        "val": df.iloc[int(n * 0.7):int(n * 0.9)],
+        "test": df.iloc[int(n * 0.9):]
+    }
+
+    for split_name, split_df in splits.items():
+        out_path = DATA_DIR / f"final_data_{split_name}_{region}.csv"
+
+        if out_path.exists():
+            print(f"Skipping {out_path.name} (already exists)")
+        else:
+            split_df.to_csv(out_path, index=False)
+            print(f"Saved: {out_path.name}")
+
+
 def run_EDA(DATA_DIR: Path, FIG_DIR: Path, region: str):
     """Run the whole EDA process from loading data, to feature engineering and plotting. Saves final csv for model"""
     # Load and merge region energy and weather data and engineer new features
@@ -194,14 +230,8 @@ def run_EDA(DATA_DIR: Path, FIG_DIR: Path, region: str):
 
     # Save final engineered df for model building including cleanup of lagged terms and unneeded source features
     df = drop_cols(df)
-    out_path = DATA_DIR / f"final_data_{region}.csv"
 
-    if out_path.exists():
-        print(f"Skipping {out_path.name} (already exists)")
-
-    else:
-        df.to_csv(out_path, index=False)
-        print(f"Saved: final_data_{region}.csv")
+    split_and_save_data(df, DATA_DIR, region)
 
 
 def main():
