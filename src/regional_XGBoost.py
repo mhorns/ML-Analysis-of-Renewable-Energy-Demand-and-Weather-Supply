@@ -21,16 +21,18 @@ from bs4 import BeautifulSoup
 
 def load_final_data(DATA_DIR: Path, region: str):
     """Gets the finalized per region energy and weather data"""
-    df = pd.read_csv(DATA_DIR / f"final_data_{region}.csv", parse_dates=["period"])
+    train_df = pd.read_csv(DATA_DIR / f"final_data_train_{region}.csv", parse_dates=["period"])
+    val_df = pd.read_csv(DATA_DIR / f"final_data_val_{region}.csv", parse_dates=["period"])
+    test_df = pd.read_csv(DATA_DIR / f"final_data_test_{region}.csv", parse_dates=["period"])
 
-    return df
+    return train_df, val_df, test_df
 
-def XG_train_test_time_split(df: pd.DataFrame, split_date:str):
-    """Creates the time based train/test split using supplied dates and drops non-numerical features"""
-    XG_train = df[df['period'] < split_date]
-    XG_train = XG_train.drop(['period', 'respondent', 'respondent-name', 'Region'], axis=1)
-    XG_test = df[df['period'] >= split_date]
-    XG_test = XG_test.drop(['period', 'respondent', 'respondent-name', 'Region'], axis=1)
+def XG_train_test_time_split(train_df: pd.DataFrame, val_df: pd.DataFrame):
+    """Creates the time based train/test split using supplied dates and drops non-numerical and cyclical features"""
+    XG_train = train_df.copy()
+    XG_train = XG_train.drop(['period', 'respondent', 'respondent-name', 'Region', 'MO', 'DY', 'HR', 'day_of_year', 'day_of_week'], axis=1)
+    XG_test = val_df.copy()
+    XG_test = XG_test.drop(['period', 'respondent', 'respondent-name', 'Region', 'MO', 'DY', 'HR', 'day_of_year', 'day_of_week'], axis=1)
     y_train = XG_train[['Total interchange']]
     X_train = XG_train.drop(['Total interchange'], axis=1)
     y_test = XG_test[['Total interchange']]
@@ -91,44 +93,26 @@ def display_XG_analytics(region: str, best_model, X_test: pd.DataFrame, y_test: 
     return rmse, mae, mape, r2
 
 
-def train_test_result_XGBoost(region: str, df: pd.DataFrame, split_date: str, param_grid: dict, FIG_DIR: Path):
+def train_test_result_XGBoost(region: str, train_df: pd.DataFrame, val_df: pd.DataFrame, param_grid: dict, FIG_DIR: Path):
     """Run the XGBoost pipeline for the given region and split dates"""
-    y_train, X_train, y_test, X_test = XG_train_test_time_split(df, split_date)
+    y_train, X_train, y_val, X_val = XG_train_test_time_split(train_df, val_df)
     grid = fit_best_XG(param_grid, X_train, y_train, n_splits=4)
     best_model = grid.best_estimator_
-    rmse, mae, mape, r2 = display_XG_analytics(region, best_model, X_train, y_train, FIG_DIR)
+    rmse, mae, mape, r2 = display_XG_analytics(region, best_model, X_val, y_val, FIG_DIR)
 
     return best_model, rmse, mae, mape, r2, grid.best_params_
 
-def run_regional_XGBoost(DATA_DIR: Path, FIG_DIR: Path, regions: list, split_date: str, param_grid: dict):
+def run_regional_XGBoost(DATA_DIR: Path, FIG_DIR: Path, regions: list, param_grid: dict):
     """Parse through provided regions and run XGBoost for each while logging results in data frame for comparison"""
     train_start = time.time()
 
     results = []
     for region in regions:
         print(f"Running XGBoost for {region}")
-        df = load_final_data(DATA_DIR, region)
-        best_model, rmse, mae, mape, r2, best_params = train_test_result_XGBoost(region, df, split_date, param_grid, FIG_DIR)
+        train_df, val_df, test_df = load_final_data(DATA_DIR, region)
+        best_model, rmse, mae, mape, r2, best_params = train_test_result_XGBoost(region, train_df, val_df, param_grid, FIG_DIR)
 
-        results.append({
-            'Region': region,
-            'Best_Model': best_model,
-            'Best_Params': best_params,
-            'RMSE': rmse,
-            'MAE': mae,
-            'MAPE': mape,
-            'R2': r2
-        })
 
-    results_df = pd.DataFrame(results)
-    out_path = DATA_DIR / f"XGBoost_train_results.csv"
-
-    if out_path.exists():
-        print(f"Skipping {out_path.name} (already exists)")
-
-    else:
-        results_df.to_csv(out_path, index=False)
-        print(f"Saved: XGBoost_train_results.csv")
 
     train_end = time.time()
 
@@ -221,12 +205,6 @@ def main():
 
     # regions = ['MIDW']
 
-    # Time window backward 5 years from 7/31/2024
-    end = datetime(2024, 7, 31)
-    start = datetime(2019, 8, 2)
-    print(f"Start date: {start}")
-    print(f"End date: {end}")
-
     param_grid = {
         'n_estimators': [100, 200, 300],
         'max_depth': [3, 5, 7],
@@ -234,10 +212,8 @@ def main():
 
     }
 
-    split_date = '2023-08-01'  # Choosing to split after 4 years to give approx 80/20
-
     # Run XGBoost for selected regions, training split date, grid search parameters
-    results_df = run_regional_XGBoost(DATA_DIR, FIG_DIR, regions, split_date, param_grid)
+    results_df = run_regional_XGBoost(DATA_DIR, FIG_DIR, regions, param_grid)
 
     # Plot results to compare across regions
     plot_XGBoost_analytics(FIG_DIR, results_df)
