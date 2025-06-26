@@ -19,6 +19,7 @@ figs/*
 !figs/MIDW_avg_hrly_wind_gen_by_month.png
 !figs/MIDW_sol_gen_vs_sol_irr.png
 !figs/MIDW_wnd_gen_vs_wnd_speed.png
+!figs/Naive_pred_results_by_region.png
 !figs/XGBoost_train_results_by_region.png
 !figs/XGBoost_feature_importance_region.png
 
@@ -28,6 +29,7 @@ __pycache__/
 *.pyc
 *.pkl
 *.log
+*.ipynb
 .DS_Store
 .env
 

@@ -178,7 +178,13 @@ for solar.  Firthermore, we can see that during winter time demand spikes, wind 
 
 
 ### Machine Learning Model Implementation
-After training XGBoost for each region using cross validation based on a train/test split of 4years/1year, we have been 
+We have created a naive prediction model where we use the prior observation from 24 hour lag to assume that will be the 
+current observation.  This is what our baseline is for each of our models to beat before we perform some scenario analysis.  
+Below are the performance metric results.  We will use these to compare across all models for all regions.
+
+![Naive Prediction Results by Region](figs/Naive_pred_results_by_region.png)
+
+After training XGBoost for each region using cross validation based on a train/validation/test split of 3years/1.5year/0.5year, we have been 
 able to observe there are some large regional variations in the model metrics.  This is likely due to idiosyncrasies in 
 each region's power generation relating to proportion of renewables, temperature variation over the year, and ability to 
 meet its own demand. Feature importance for each region also shows some divergent patterns likely due to the same factors. 
