@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import random
 import re
 import requests
 from io import StringIO
@@ -29,22 +30,24 @@ def load_final_data(DATA_DIR: Path, region: str):
 
 def XG_train_test_time_split(train_df: pd.DataFrame, val_df: pd.DataFrame):
     """Creates the time based train/test split using supplied dates and drops non-numerical and cyclical features"""
+    drop_cols = ['period', 'respondent', 'respondent-name', 'Region', 'MO', 'DY', 'HR', 'day_of_year', 'day_of_week']
+    targ_col = ['Total interchange']
     XG_train = train_df.copy()
-    XG_train = XG_train.drop(['period', 'respondent', 'respondent-name', 'Region', 'MO', 'DY', 'HR', 'day_of_year', 'day_of_week'], axis=1)
+    XG_train = XG_train.drop(drop_cols, axis=1)
     XG_test = val_df.copy()
-    XG_test = XG_test.drop(['period', 'respondent', 'respondent-name', 'Region', 'MO', 'DY', 'HR', 'day_of_year', 'day_of_week'], axis=1)
-    y_train = XG_train[['Total interchange']]
-    X_train = XG_train.drop(['Total interchange'], axis=1)
-    y_test = XG_test[['Total interchange']]
-    X_test = XG_test.drop(['Total interchange'], axis=1)
+    XG_test = XG_test.drop(drop_cols, axis=1)
+    y_train = XG_train[targ_col]
+    X_train = XG_train.drop(targ_col, axis=1)
+    y_test = XG_test[targ_col]
+    X_test = XG_test.drop(targ_col, axis=1)
     print(f'Train shapes(y, X): {y_train.shape, X_train.shape}, Test shapes(y, X): {y_test.shape, X_test.shape}')
 
     return y_train, X_train, y_test, X_test
 
-def fit_best_XG(param_grid: dict, X_train: pd.DataFrame, y_train: pd.DataFrame, n_splits=4):
+def fit_best_XG(param_grid: dict, X_train: pd.DataFrame, y_train: pd.DataFrame, n_splits=7):
     """Use Time Series Split to perform GridSearchCV on given parameter grid"""
 
-    tscv = TimeSeriesSplit(n_splits=n_splits)  # default is 4 since we have 4 full years of data in train set
+    tscv = TimeSeriesSplit(n_splits=n_splits)  # default is 6 month windows
 
     xgb = XGBRegressor(random_state=42)
 
@@ -66,19 +69,27 @@ def fit_best_XG(param_grid: dict, X_train: pd.DataFrame, y_train: pd.DataFrame, 
 
     return grid
 
+def safe_mape(y_true, y_pred):
+    """Safely calculate the MAPE when there are zeros"""
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    # Avoid divide-by-zero
+    mask = y_true != 0
+    if np.sum(mask) == 0:
+        return np.nan
+
+    mape = np.mean(np.abs((y_pred[mask] - y_true[mask]) / y_true[mask])) * 100
+    return mape
+
 def display_XG_analytics(region: str, best_model, X_test: pd.DataFrame, y_test: pd.DataFrame, FIG_DIR: Path):
     """Calculate performance analytics for the best model from GirdSearchCV for train/test data"""
     y_pred = best_model.predict(X_test)
     y_true = y_test.values.ravel()
 
-    # Avoid division by zero in MAPE
-    mask = y_true != 0
-    percent_error = np.zeros_like(y_true, dtype=float)
-    percent_error[mask] = (y_pred[mask] - y_true[mask]) / y_true[mask]
-
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     mae = mean_absolute_error(y_true, y_pred)
-    mape = np.mean(np.abs(percent_error[mask])) * 100
+    mape = safe_mape(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
 
     print(f"RMSE: {rmse}")
@@ -88,16 +99,19 @@ def display_XG_analytics(region: str, best_model, X_test: pd.DataFrame, y_test: 
 
     plot_importance(best_model, max_num_features=15)
     plt.title(f'{region} XGBoost Feature Importance')
+    plt.tight_layout()
     plt.savefig(FIG_DIR / f'{region}_XGBoost_feature_importance.png')
 
     return rmse, mae, mape, r2
 
 
-def train_test_result_XGBoost(region: str, train_df: pd.DataFrame, val_df: pd.DataFrame, param_grid: dict, FIG_DIR: Path):
+def train_test_result_XGBoost(region: str, train_df: pd.DataFrame, val_df: pd.DataFrame, param_grid: dict,
+                              DATA_DIR: Path, FIG_DIR: Path):
     """Run the XGBoost pipeline for the given region and split dates"""
     y_train, X_train, y_val, X_val = XG_train_test_time_split(train_df, val_df)
-    grid = fit_best_XG(param_grid, X_train, y_train, n_splits=4)
+    grid = fit_best_XG(param_grid, X_train, y_train, n_splits=7)
     best_model = grid.best_estimator_
+    best_model.save_model(DATA_DIR / f"{region}_xgboost_model.json")
     rmse, mae, mape, r2 = display_XG_analytics(region, best_model, X_val, y_val, FIG_DIR)
 
     return best_model, rmse, mae, mape, r2, grid.best_params_
@@ -110,9 +124,29 @@ def run_regional_XGBoost(DATA_DIR: Path, FIG_DIR: Path, regions: list, param_gri
     for region in regions:
         print(f"Running XGBoost for {region}")
         train_df, val_df, test_df = load_final_data(DATA_DIR, region)
-        best_model, rmse, mae, mape, r2, best_params = train_test_result_XGBoost(region, train_df, val_df, param_grid, FIG_DIR)
+        best_model, rmse, mae, mape, r2, best_params = train_test_result_XGBoost(region, train_df, val_df, param_grid,
+                                                                                 DATA_DIR, FIG_DIR)
 
+        results.append({
+            'Region': region,
+            'Best_Model': best_model,
+            'Model': (f"XGBoost | {best_params}"),
+            'RMSE': rmse,
+            'MAE': mae,
+            'MAPE': mape,
+            'R2': r2
+        })
 
+    # Save full model results per region
+    results_df = pd.DataFrame(results)
+    out_path = DATA_DIR / f"XGBoost_train_results.csv"
+
+    if out_path.exists():
+        print(f"Skipping {out_path.name} (already exists)")
+
+    else:
+        results_df.to_csv(out_path, index=False)
+        print(f"Saved: XGBoost_train_results.csv")
 
     train_end = time.time()
 
@@ -186,6 +220,9 @@ def plot_XGBoost_analytics(FIG_DIR: Path, results_df: pd.DataFrame):
 
 
 def main():
+    # Setting seeds for the RNN reproducibility
+    np.random.seed(42)
+    random.seed(42)
 
     # Base directory: go up one level from current script (i.e., from 'src/' to project root)
     BASE_DIR = Path(__file__).resolve().parent.parent
@@ -209,7 +246,6 @@ def main():
         'n_estimators': [100, 200, 300],
         'max_depth': [3, 5, 7],
         'learning_rate': [0.01, 0.05, 0.1]
-
     }
 
     # Run XGBoost for selected regions, training split date, grid search parameters
@@ -217,7 +253,6 @@ def main():
 
     # Plot results to compare across regions
     plot_XGBoost_analytics(FIG_DIR, results_df)
-
 
 
 if __name__ == "__main__":

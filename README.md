@@ -195,6 +195,17 @@ meet its own demand. Feature importance for each region also shows some divergen
 
 ![XGBoost Feature Importance by Region](figs/XGBoost_feature_importance_region.png)
 
+We have trained LSTM and GRU recurrent neural networks and have been unable to achieve success so far exceeding XGBoost's 
+learned performance due to its strong capabilities with consistent tabular data, idiosyncrasies in regional data 
+perturbing the weights calculations in RNNs as well as only having 5 years of total data for training.  The RNNs would 
+likely perform better with more data to deal with seasonal annual trends. 
+
+![Compare All Model RMSE Barplot](figs/Compare_model_RMSE_barplot_plot.png)
+![Compare All Model MAE Barplot](figs/Compare_model_MAE_barplot_plot.png)
+![Compare All Model MAPE Barplot](figs/Compare_model_MAPE_barplot_plot.png)
+![Compare All Model R2 Barplot](figs/Compare_model_R2_barplot_plot.png)
+
+
 ## Future Considerations
 
 ### Contributors

@@ -39,7 +39,7 @@ def safe_mape(y_true, y_pred):
     # Avoid divide-by-zero
     mask = y_true != 0
     if np.sum(mask) == 0:
-        return np.nan  # or 0.0 or raise an error, depending on your preference
+        return np.nan
 
     mape = np.mean(np.abs((y_pred[mask] - y_true[mask]) / y_true[mask])) * 100
     return mape
@@ -75,6 +75,7 @@ def get_naive_results(DATA_DIR: Path, regions):
 
         results.append({
             'Region': region,
+            'Model': 'Naive Pred',
             'RMSE': rmse,
             'MAE': mae,
             'MAPE': mape,
