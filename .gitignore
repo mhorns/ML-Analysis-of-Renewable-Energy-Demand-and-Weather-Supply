@@ -22,6 +22,10 @@ figs/*
 !figs/Naive_pred_results_by_region.png
 !figs/XGBoost_train_results_by_region.png
 !figs/XGBoost_feature_importance_region.png
+!figs/Compare_model_RMSE_barplot_plot.png
+!figs/Compare_model_MAE_barplot_plot.png
+!figs/Compare_model_MAPE_barplot_plot.png
+!figs/Compare_model_R2_barplot_plot.png
 
 
 # Python + OS junk
