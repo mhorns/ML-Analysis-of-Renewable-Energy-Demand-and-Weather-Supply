@@ -55,7 +55,7 @@ def fit_best_XG(param_grid: dict, X_train: pd.DataFrame, y_train: pd.DataFrame, 
         estimator=xgb,
         param_grid=param_grid,
         cv=tscv,
-        scoring='neg_mean_absolute_error',
+        scoring='neg_mean_squared_error',
         n_jobs=-1,
         verbose=1
     )

@@ -53,12 +53,22 @@ def load_model_metrics(DATA_DIR: Path):
 def plot_model_metrics(FIG_DIR, summary_df):
     metrics = ['RMSE', 'MAE', 'MAPE', 'R2']
 
+    palette = {
+        'LSTM_3unit': '#08306B',  # navy
+        'LSTM_2unit': '#2171B5',  # blue
+        'GRU_3unit': '#00441B',  # dark green
+        'GRU_2unit': '#238B45',  # green
+        'XGBoost': '#7F2704',  # rust
+        'Naive Pred': '#525252'  # gray
+    }
+
     for metric in metrics:
         plt.figure(figsize=(12, 6))
         sns.barplot(
             data=summary_df,
             x='Region', y=metric,
             hue='Model',
+            palette=palette,
             dodge=True,
             errorbar=None  # disable error bars for clean comparison
         )
