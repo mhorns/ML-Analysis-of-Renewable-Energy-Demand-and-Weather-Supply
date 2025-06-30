@@ -59,12 +59,6 @@ def evaluate_naive_lag_24(DATA_DIR: Path, region, target_col: str = 'Total inter
     mape = safe_mape(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
 
-    print(f"Naive Baseline Evaluation (24hr lag) {region}:")
-    print(f"  RMSE : {rmse:.2f}")
-    print(f"  MAE  : {mae:.2f}")
-    print(f"  MAPE : {mape:.2f}%")
-    print(f"  R²   : {r2:.3f}")
-
     return rmse, mae, mape, r2
 
 def get_naive_results(DATA_DIR: Path, regions):
