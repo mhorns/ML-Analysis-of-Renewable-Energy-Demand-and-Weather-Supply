@@ -170,7 +170,7 @@ rolling window lags.  For many regions summer is hot and winter is cold.  At bot
 ![Midwest Region Temp vs Demand](figs/MIDW_t2m_vs_energy_demand.png)
 
 We are also able to see that the peak demand times by month occur at a time when the sun is shining, making a great case 
-for solar.  Firthermore, we can see that during winter time demand spikes, wind is a good alternative.
+for solar.  Furthermore, we can see that during winter time demand spikes, wind is a good alternative.
 
 ![Midwest Region Average Demand by Hour and Month](figs/MIDW_avg_hrly_demand_by_month.png)
 ![Midwest Region Average Solar Generation by Hour and Month](figs/MIDW_avg_hrly_solar_gen_by_month.png)
