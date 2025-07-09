@@ -45,7 +45,18 @@ def scale_features(scaler, train_df, val_df, test_df, exclude_cols=None):
     if exclude_cols is None:
         exclude_cols = []
 
-    feature_cols = [col for col in train_df.columns if col not in exclude_cols]
+    # Do not scale cyclical or binary cols as they are already within bounds
+    no_scale_cols = ['hour_sin',
+                     'hour_cos',
+                     'month_sin',
+                     'month_cos',
+                     'doy_sin',
+                     'doy_cos',
+                     'dow_sin',
+                     'dow_cos',
+                     'is_weekend']
+    all_exclude_cols = list(exclude_cols) + no_scale_cols
+    feature_cols = [col for col in train_df.columns if col not in all_exclude_cols]
 
     # Select scaler type
     if scaler == 'StandardScaler()':
@@ -71,8 +82,34 @@ def preprocess_RNN(DATA_DIR: Path, regions: list, seq_len: int = 24):
         df_train, df_val, df_test = load_final_data(DATA_DIR, region)
 
         # Drop label cols and assign target
-        drop_cols = ['period', 'respondent', 'respondent-name', 'Region']
-        target_col = 'Total interchange'
+        # drop_cols = ['period', 'respondent', 'respondent-name', 'Region']
+        drop_cols = ['period',
+                     'respondent',
+                     'respondent-name',
+                     'Region',
+                     'MO',
+                     'DY',
+                     'HR',
+                     'day_of_year',
+                     'day_of_week',
+                     'lag_interchange_1h',
+                     'lag_interchange_24h',
+                     'interchange_roll_mean_3h',
+                     'Net_generation_lag_1',
+                     'Demand_30d_avg',
+                     'Day-ahead demand forecast_30d_avg',
+                     'Solar_30d_avg',
+                     'Wind_30d_avg',
+                     'Net generation_30d_avg',
+                     'Total interchange_30d_avg',
+                     'Pct_Solar_30d_avg',
+                     'Pct_Wind_30d_avg',
+                     'ALLSKY_SFC_SW_DWN_30d_avg',
+                     'T2M_30d_avg',
+                     'WSC_30d_avg',
+                     'unexpect_dem_diff_30d_avg'
+                     ]
+        target_col = ['Total interchange']
         df_train = df_train.drop(drop_cols,axis=1)
         df_val = df_val.drop(drop_cols,axis=1)
         df_test = df_test.drop(drop_cols,axis=1)
@@ -84,7 +121,9 @@ def preprocess_RNN(DATA_DIR: Path, regions: list, seq_len: int = 24):
                                                                                 df_val,
                                                                                 df_test,
                                                                                 target_col)
+        print(f"shape of df_train: {df_train.shape}, df_train_scaled: {df_train_scaled.shape}")
         feature_cols = [col for col in df_train_scaled.columns if col != target_col]
+        print(f"feature cols: {feature_cols} \n and target_col: {target_col}")
         X_train, y_train = build_sequences(df_train_scaled, feature_cols, target_col, seq_len)
         X_val, y_val = build_sequences(df_val_scaled, feature_cols, target_col, seq_len)
         X_test, y_test = build_sequences(df_test_scaled, feature_cols, target_col, seq_len)
@@ -96,7 +135,7 @@ def preprocess_RNN(DATA_DIR: Path, regions: list, seq_len: int = 24):
             "y_train": y_train,
             "y_val": y_val,
             "y_test": y_test,
-            "scaler": scaler  # how to save and reuse?
+            "scaler": scaler
         }
 
         # Save split tensors and scaler for reuse in training
@@ -140,9 +179,9 @@ def main():
     print(f"Figures Directory: {FIG_DIR}")
 
     # 13 EIA region codes
-    # regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
+    regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
 
-    regions = ['MIDW']
+    # regions = ['MIDW']
 
     preprocess_RNN(DATA_DIR, regions, seq_len=24)
 

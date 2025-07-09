@@ -120,13 +120,13 @@ def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, rnn_type='LST
 
     results = []
     for region in tqdm(regions):
-        X_train = np.load(DATA_DIR / f"rnn_min_max_data_X_train_{region}.npy")
-        X_val = np.load(DATA_DIR / f"rnn_min_max_data_X_val_{region}.npy")
-        X_test = np.load(DATA_DIR / f"rnn_min_max_data_X_test_{region}.npy")
-        y_train = np.load(DATA_DIR / f"rnn_min_max_data_y_train_{region}.npy")
-        y_val = np.load(DATA_DIR / f"rnn_min_max_data_y_val_{region}.npy")
-        y_test = np.load(DATA_DIR / f"rnn_min_max_data_y_test_{region}.npy")
-        scaler = joblib.load(DATA_DIR / f"rnn_min_max_scaler_{region}.joblib")
+        X_train = np.load(DATA_DIR / f"rnn_data_X_train_{region}.npy")
+        X_val = np.load(DATA_DIR / f"rnn_data_X_val_{region}.npy")
+        X_test = np.load(DATA_DIR / f"rnn_data_X_test_{region}.npy")
+        y_train = np.load(DATA_DIR / f"rnn_data_y_train_{region}.npy")
+        y_val = np.load(DATA_DIR / f"rnn_data_y_val_{region}.npy")
+        y_test = np.load(DATA_DIR / f"rnn_data_y_test_{region}.npy")
+        scaler = joblib.load(DATA_DIR / f"rnn_scaler_{region}.joblib")
 
         # Train and evaluate results
         model, rmse, mae, mape, r2 = train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
@@ -181,9 +181,9 @@ def main():
     print(f"Figures Directory: {FIG_DIR}")
 
     # 13 EIA region codes
-    regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
+    # regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
 
-    # regions = ['MIDW']
+    regions = ['MIDW']
     types = ['LSTM', 'GRU']
     units = [[128, 64, 32], [64, 32]]
 
