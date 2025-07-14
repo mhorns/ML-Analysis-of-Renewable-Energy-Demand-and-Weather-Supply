@@ -87,6 +87,62 @@ def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test
 
     return model, rmse, mae, mape, r2
 
+def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
+                                     region, encoder, latent_dim=32, batch_size=64, epochs=20, loss='mse', optimizer='adam'):
+    """Trains a dense forecast model using latent inputs from an encoder"""
+
+    # Step 1: Encode inputs
+    X_train_latent = encoder.predict(X_train)
+    X_val_latent = encoder.predict(X_val)
+    X_test_latent = encoder.predict(X_test)
+
+    # Step 2: Scale target
+    scaler_y = StandardScaler()
+    y_train_scaled = scaler_y.fit_transform(y_train.reshape(-1, 1))
+    y_val_scaled = scaler_y.transform(y_val.reshape(-1, 1))
+
+    # Step 3: Build forecast model from latent vector
+    model = Sequential([
+        tf.keras.layers.Input(shape=(latent_dim,)),
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Dense(1)
+    ])
+    model.compile(optimizer=optimizer, loss=loss)
+
+    # Step 4: Train
+    history = model.fit(
+        X_train_latent, y_train_scaled,
+        validation_data=(X_val_latent, y_val_scaled),
+        batch_size=batch_size,
+        epochs=epochs,
+        callbacks=[
+            EarlyStopping(patience=6, min_delta=0.001, restore_best_weights=True, verbose=1),
+            ReduceLROnPlateau(patience=3, factor=0.5, min_delta=0.001, verbose=1)
+        ]
+    )
+
+    plot_loss(FIG_DIR, history, region, f"AELatent_{latent_dim}", [latent_dim])
+
+    # Step 5: Evaluate on validation
+    y_pred_scaled = model.predict(X_val_latent)
+    y_pred = scaler_y.inverse_transform(y_pred_scaled)
+
+    y_true = y_val.ravel()
+    y_pred = y_pred.ravel()
+
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    mae = mean_absolute_error(y_true, y_pred)
+    mape = safe_mape(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+
+    print(f"[Autoencoder Forecast] RMSE: {rmse:.2f} | MAE: {mae:.2f} | MAPE: {mape:.2f}% | R2: {r2:.4f}")
+
+    model.save(DATA_DIR / f"{region}_ae_latent_forecast_model.h5")
+
+    return model, rmse, mae, mape, r2
+
+
 def safe_mape(y_true, y_pred):
     """Safely calculate the MAPE when there are zeros"""
     y_true = np.array(y_true)
@@ -112,8 +168,8 @@ def plot_loss(FIG_DIR, history, region, rnn_type, units_per_layer):
     plt.savefig(FIG_DIR / f"{region}_{rnn_type.lower()}_{len(units_per_layer)}unit_loss_plot.png")
     plt.close()
 
-def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, rnn_type='LSTM', units_per_layer=[128, 64, 32],
-                        dropout=0.2, batch_size=64, epochs=20, loss='mse', optimizer='adam'):
+def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, use_autoencoder=False, rnn_type='LSTM',
+                     units_per_layer=[128, 64, 32], dropout=0.2, batch_size=32, epochs=20, loss='mse', optimizer='adam'):
     """Runs RNN training process for each region by importing the scaled train/val/test sets and scaler, and
     running it through the model building train and evaluate helper"""
     train_start = time.time()
@@ -128,15 +184,28 @@ def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, rnn_type='LST
         y_test = np.load(DATA_DIR / f"rnn_data_y_test_{region}.npy")
         scaler = joblib.load(DATA_DIR / f"rnn_scaler_{region}.joblib")
 
-        # Train and evaluate results
-        model, rmse, mae, mape, r2 = train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
-                           region, rnn_type=rnn_type, units_per_layer=units_per_layer,
-                           dropout=dropout, batch_size=batch_size, epochs=epochs, loss=loss, optimizer=optimizer)
+        # Train and evaluate results for each switch type
+        if use_autoencoder:
+            encoder = tf.keras.models.load_model(DATA_DIR / f"{region}_encoder.h5")
+            latent_dim = encoder.output_shape[-1]
+            model, rmse, mae, mape, r2 = train_evaluate_latent_forecaster(
+                DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
+                region, encoder, latent_dim=latent_dim,
+                batch_size=batch_size, epochs=epochs, loss=loss, optimizer=optimizer
+            )
+            model_type = f"Autoencoder Forecast (latent_dim={latent_dim})"
+
+        else:
+            model, rmse, mae, mape, r2 = train_evaluate_rnn(
+                DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
+                region, rnn_type=rnn_type, units_per_layer=units_per_layer,
+                dropout=dropout, batch_size=batch_size, epochs=epochs, loss=loss, optimizer=optimizer
+            )
+            model_type = f"{rnn_type} | layers={units_per_layer}"
 
         results.append({
             'Region': region,
-            'Model': (f"{rnn_type} | layers={units_per_layer} | dropout={dropout} | batch={batch_size} | ",
-                     f"epochs={epochs} | loss={loss} | optimizer={optimizer}"),
+            'Model': model_type,
             'RMSE': rmse,
             'MAE': mae,
             'MAPE': mape,
@@ -144,21 +213,16 @@ def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, rnn_type='LST
         })
 
     # Save full model results per region
-    results_df = pd.DataFrame(results)
-    out_path = DATA_DIR / f"{rnn_type.lower()}_{len(units_per_layer)}unit_train_results.csv"
-
-    if out_path.exists():
-        print(f"Skipping {out_path.name} (already exists)")
-
-    else:
-        results_df.to_csv(out_path, index=False)
-        print(f"Saved: {rnn_type.lower()}_{len(units_per_layer)}unit_train_results.csv")
+    df = pd.DataFrame(results)
+    out_name = f"{'ae' if use_autoencoder else rnn_type.lower()}_{len(units_per_layer)}unit_train_results.csv"
+    df.to_csv(DATA_DIR / out_name, index=False)
+    print(f"Saved: {out_name}")
 
     train_end = time.time()
 
     print(f"Total training time for all selected regions: {train_end - train_start} seconds")
 
-    return results_df
+    return df
 
 
 def main():
@@ -181,17 +245,16 @@ def main():
     print(f"Figures Directory: {FIG_DIR}")
 
     # 13 EIA region codes
-    # regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
+    regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
 
-    regions = ['MIDW']
-    types = ['LSTM', 'GRU']
-    units = [[128, 64, 32], [64, 32]]
+    # Run both models for comparison
+    '''print("Running Base LSTM Model")
+    run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=False,
+                            rnn_type='LSTM', units_per_layer=[128, 64, 32], epochs=30)'''
 
-    for type in types:
-        for unit in units:
-            results = run_regional_rnn(DATA_DIR, FIG_DIR, regions, rnn_type=type, units_per_layer=unit,
-                                dropout=0.2, batch_size=32, epochs=30, loss='mse', optimizer='adam')
-            print(results)
+    print("Running Autoencoder Forecast Model")
+    run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=True, epochs=30)
+
 
 if __name__ == "__main__":
     main()
