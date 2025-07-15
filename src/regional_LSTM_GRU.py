@@ -42,6 +42,7 @@ def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test
             model.add(RNN(units, return_sequences=return_seq, input_shape=(X_train.shape[1], X_train.shape[2])))
         else:
             model.add(RNN(units, return_sequences=return_seq))
+        model.add(BatchNormalization())
         model.add(Dropout(dropout))
 
     model.add(Dense(1))
@@ -91,26 +92,33 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
                                      region, encoder, latent_dim=32, batch_size=64, epochs=20, loss='mse', optimizer='adam'):
     """Trains a dense forecast model using latent inputs from an encoder"""
 
-    # Step 1: Encode inputs
+    # Encode inputs
     X_train_latent = encoder.predict(X_train)
     X_val_latent = encoder.predict(X_val)
     X_test_latent = encoder.predict(X_test)
 
-    # Step 2: Scale target
+    # Scale target
     scaler_y = StandardScaler()
     y_train_scaled = scaler_y.fit_transform(y_train.reshape(-1, 1))
     y_val_scaled = scaler_y.transform(y_val.reshape(-1, 1))
 
-    # Step 3: Build forecast model from latent vector
-    model = Sequential([
+    # Build forecast model from latent vector
+    model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(latent_dim,)),
-        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.BatchNormalization(),
         tf.keras.layers.Dropout(0.3),
+
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.Dropout(0.2),
+
+        tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(1)
     ])
     model.compile(optimizer=optimizer, loss=loss)
 
-    # Step 4: Train
+    # Train
     history = model.fit(
         X_train_latent, y_train_scaled,
         validation_data=(X_val_latent, y_val_scaled),
@@ -124,7 +132,7 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
 
     plot_loss(FIG_DIR, history, region, f"AELatent_{latent_dim}", [latent_dim])
 
-    # Step 5: Evaluate on validation
+    # Evaluate on validation
     y_pred_scaled = model.predict(X_val_latent)
     y_pred = scaler_y.inverse_transform(y_pred_scaled)
 
@@ -246,6 +254,7 @@ def main():
 
     # 13 EIA region codes
     regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
+    regions = ['MIDW', 'NW', 'NY']
 
     # Run both models for comparison
     '''print("Running Base LSTM Model")
