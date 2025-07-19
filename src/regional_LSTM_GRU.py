@@ -13,6 +13,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+from tensorflow.keras import regularizers
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, GRU, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -24,9 +25,9 @@ import seaborn as sns; sns.set()
 
 def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
                        region, rnn_type='LSTM', units_per_layer=[128, 64, 32],
-                       dropout=0.2, batch_size=64, epochs=20, loss='mse', optimizer='adam'):
+                       dropout=0.2, batch_size=64, epochs=20, loss='mse', optimizer='adam', l2_lambda=0.0):
     """Trains an LSTM or GRU model with flexible architecture."""
-
+    train_start = time.time()
     # Scale target using standard scaler to perform preds with zero mean and unit variance
     scaler_y = StandardScaler()
     y_train_scaled = scaler_y.fit_transform(y_train.reshape(-1, 1))
@@ -39,9 +40,14 @@ def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test
     for i, units in enumerate(units_per_layer):
         return_seq = i < len(units_per_layer) - 1  # only last RNN layer should not return sequences
         if i == 0:
-            model.add(RNN(units, return_sequences=return_seq, input_shape=(X_train.shape[1], X_train.shape[2])))
+            model.add(RNN(units,
+                          return_sequences=return_seq,
+                          input_shape=(X_train.shape[1], X_train.shape[2]),
+                          kernel_regularizer=regularizers.l2(l2_lambda)))
         else:
-            model.add(RNN(units, return_sequences=return_seq))
+            model.add(RNN(units,
+                          return_sequences=return_seq,
+                          kernel_regularizer=regularizers.l2(l2_lambda)))
         model.add(BatchNormalization())
         model.add(Dropout(dropout))
 
@@ -86,12 +92,17 @@ def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test
         model.save(out_path)
         print(f"Saved: {out_path.name}")
 
+    train_end = time.time()
+
+    print(f"Total time for training region: {train_end - train_start} seconds")
+
     return model, rmse, mae, mape, r2
 
 def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
-                                     region, encoder, latent_dim=32, batch_size=64, epochs=20, loss='mse', optimizer='adam'):
+                                     region, encoder, latent_dim=32, batch_size=64, epochs=20, loss='mse',
+                                     optimizer='adam', l2_lambda=0.0):
     """Trains a dense forecast model using latent inputs from an encoder"""
-
+    train_start = time.time()
     # Encode inputs
     X_train_latent = encoder.predict(X_train)
     X_val_latent = encoder.predict(X_val)
@@ -105,15 +116,18 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
     # Build forecast model from latent vector
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(latent_dim,)),
-        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(128, activation='relu',
+                              kernel_regularizer=regularizers.l2(l2_lambda)),
         tf.keras.layers.BatchNormalization(),
         tf.keras.layers.Dropout(0.3),
 
-        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(64, activation='relu',
+                              kernel_regularizer=regularizers.l2(l2_lambda)),
         tf.keras.layers.BatchNormalization(),
         tf.keras.layers.Dropout(0.2),
 
-        tf.keras.layers.Dense(32, activation='relu'),
+        tf.keras.layers.Dense(32, activation='relu',
+                              kernel_regularizer=regularizers.l2(l2_lambda)),
         tf.keras.layers.Dense(1)
     ])
     model.compile(optimizer=optimizer, loss=loss)
@@ -148,6 +162,10 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
 
     model.save(DATA_DIR / f"{region}_ae_latent_forecast_model.h5")
 
+    train_end = time.time()
+
+    print(f"Total time for training region: {train_end - train_start} seconds")
+
     return model, rmse, mae, mape, r2
 
 
@@ -177,7 +195,8 @@ def plot_loss(FIG_DIR, history, region, rnn_type, units_per_layer):
     plt.close()
 
 def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, use_autoencoder=False, rnn_type='LSTM',
-                     units_per_layer=[128, 64, 32], dropout=0.2, batch_size=32, epochs=20, loss='mse', optimizer='adam'):
+                     units_per_layer=[128, 64, 32], dropout=0.2, batch_size=32, epochs=20, loss='mse',
+                     optimizer='adam', l2_lambda=0.0):
     """Runs RNN training process for each region by importing the scaled train/val/test sets and scaler, and
     running it through the model building train and evaluate helper"""
     train_start = time.time()
@@ -197,9 +216,9 @@ def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, use_autoencod
             encoder = tf.keras.models.load_model(DATA_DIR / f"{region}_encoder.h5")
             latent_dim = encoder.output_shape[-1]
             model, rmse, mae, mape, r2 = train_evaluate_latent_forecaster(
-                DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
-                region, encoder, latent_dim=latent_dim,
-                batch_size=batch_size, epochs=epochs, loss=loss, optimizer=optimizer
+                DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test, region, encoder,
+                latent_dim=latent_dim, batch_size=batch_size, epochs=epochs, loss=loss, optimizer=optimizer,
+                l2_lambda=l2_lambda
             )
             model_type = f"Autoencoder Forecast (latent_dim={latent_dim})"
 
@@ -207,7 +226,8 @@ def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, use_autoencod
             model, rmse, mae, mape, r2 = train_evaluate_rnn(
                 DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
                 region, rnn_type=rnn_type, units_per_layer=units_per_layer,
-                dropout=dropout, batch_size=batch_size, epochs=epochs, loss=loss, optimizer=optimizer
+                dropout=dropout, batch_size=batch_size, epochs=epochs, loss=loss, optimizer=optimizer,
+                l2_lambda=l2_lambda
             )
             model_type = f"{rnn_type} | layers={units_per_layer}"
 
@@ -262,7 +282,7 @@ def main():
                             rnn_type='LSTM', units_per_layer=[128, 64, 32], epochs=30)'''
 
     print("Running Autoencoder Forecast Model")
-    run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=True, epochs=30)
+    run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=True, epochs=30, l2_lambda=0.001)
 
 
 if __name__ == "__main__":
