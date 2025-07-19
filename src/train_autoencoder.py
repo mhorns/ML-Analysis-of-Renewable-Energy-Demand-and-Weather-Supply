@@ -1,35 +1,49 @@
 from pathlib import Path
 import numpy as np
 import random
+import time
 import joblib
+from tensorflow.keras import regularizers
 import tensorflow as tf
 from tensorflow.keras import layers, models, callbacks
 
-def build_autoencoder(input_shape, latent_dim=64, dropout_rate=0.2):
+def build_autoencoder(input_shape, latent_dim=64, dropout_rate=0.2, l2_lambda=0.0):
     """Returns autoencoder and encoder models with dropout and batch normalization"""
     inputs = layers.Input(shape=input_shape)
-    x = layers.LSTM(64, return_sequences=False)(inputs)
-    x = layers.BatchNormalization()(x)
-    x = layers.Dropout(dropout_rate)(x)
-    latent = layers.Dense(latent_dim, activation='relu')(x)
 
-    x = layers.RepeatVector(input_shape[0])(latent)
-    x = layers.LSTM(64, return_sequences=True)(x)
+    # Encoder
+    x = layers.LSTM(64, return_sequences=False,
+                    kernel_regularizer=regularizers.l2(l2_lambda))(inputs)
     x = layers.BatchNormalization()(x)
     x = layers.Dropout(dropout_rate)(x)
-    outputs = layers.TimeDistributed(layers.Dense(input_shape[-1]))(x)
+    latent = layers.Dense(latent_dim, activation='relu',
+                          kernel_regularizer=regularizers.l2(l2_lambda))(x)
+    latent = layers.BatchNormalization()(latent)
+
+    # Decoder
+    x = layers.RepeatVector(input_shape[0])(latent)
+    x = layers.LSTM(64, return_sequences=True,
+                    kernel_regularizer=regularizers.l2(l2_lambda))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dropout(dropout_rate)(x)
+    outputs = layers.TimeDistributed(layers.Dense(input_shape[-1],
+                                     kernel_regularizer=regularizers.l2(l2_lambda)))(x)
 
     autoencoder = models.Model(inputs, outputs)
     encoder = models.Model(inputs, latent)
     return autoencoder, encoder
 
-def train_autoencoder(DATA_DIR: Path, region: str, latent_dim=64, dropout_rate=0.2):
+def train_autoencoder(DATA_DIR: Path, region: str, latent_dim=64, dropout_rate=0.2, l2_lambda=0.0):
+    train_start = time.time()
     print(f"\nTraining autoencoder for region: {region}")
     X_train = np.load(DATA_DIR / f"rnn_data_X_train_{region}.npy")
     X_val = np.load(DATA_DIR / f"rnn_data_X_val_{region}.npy")
 
-    autoencoder, encoder = build_autoencoder(X_train.shape[1:], latent_dim=latent_dim, dropout_rate=dropout_rate)
-    autoencoder.compile(optimizer='adam', loss='mse')
+    autoencoder, encoder = build_autoencoder(X_train.shape[1:],
+                                             latent_dim=latent_dim,
+                                             dropout_rate=dropout_rate,
+                                             l2_lambda=l2_lambda)
+    autoencoder.compile(optimizer='adam', loss='mae')
 
     history = autoencoder.fit(
         X_train, X_train,
@@ -47,6 +61,10 @@ def train_autoencoder(DATA_DIR: Path, region: str, latent_dim=64, dropout_rate=0
     encoder.save(DATA_DIR / f"{region}_encoder.h5")
 
     print("Saved encoder and autoencoder models.")
+
+    train_end = time.time()
+
+    print(f"Total time for training region: {train_end - train_start} seconds")
     return encoder
 
 def main():
@@ -73,7 +91,7 @@ def main():
     regions = ['MIDW', 'NW', 'NY']
 
     for region in regions:
-        train_autoencoder(DATA_DIR, region)
+        train_autoencoder(DATA_DIR, region, l2_lambda=0.001)
 
 if __name__ == "__main__":
     main()
