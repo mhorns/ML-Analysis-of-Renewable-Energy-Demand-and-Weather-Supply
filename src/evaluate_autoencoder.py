@@ -20,7 +20,7 @@ def evaluate_autoencoder(region, DATA_DIR, FIG_DIR):
         plt.figure(figsize=(12, 3))
         plt.plot(X_val[i].flatten(), label='Original', alpha=0.7)
         plt.plot(decoded[i].flatten(), label='Reconstructed', alpha=0.7)
-        plt.title(f"Validation Sample {i}")
+        plt.title(f"Validation Sample {region} {i}")
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
@@ -31,7 +31,7 @@ def evaluate_autoencoder(region, DATA_DIR, FIG_DIR):
     errors = [mean_squared_error(x_true, x_pred) for x_true, x_pred in zip(X_val, decoded)]
     plt.figure(figsize=(8, 4))
     sns.histplot(errors, bins=50)
-    plt.title("Validation Reconstruction Error Distribution")
+    plt.title(f"Validation Reconstruction Error Distribution {region}")
     plt.xlabel("MSE")
     plt.grid(True)
     plt.tight_layout()

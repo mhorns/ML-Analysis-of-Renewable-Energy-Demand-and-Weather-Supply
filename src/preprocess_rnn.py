@@ -92,22 +92,22 @@ def preprocess_RNN(DATA_DIR: Path, regions: list, seq_len: int = 24):
                      'HR',
                      'day_of_year',
                      'day_of_week',
-                     'lag_interchange_1h',
-                     'lag_interchange_24h',
-                     'interchange_roll_mean_3h',
-                     'Net_generation_lag_1',
-                     'Demand_30d_avg',
+                     # 'lag_interchange_1h',
+                     # 'lag_interchange_24h',
+                     # 'interchange_roll_mean_3h',
+                     # 'Net_generation_lag_1',
+                     # 'Demand_30d_avg',
                      'Day-ahead demand forecast_30d_avg',
-                     'Solar_30d_avg',
-                     'Wind_30d_avg',
+                     # 'Solar_30d_avg',
+                     # 'Wind_30d_avg',
                      'Net generation_30d_avg',
                      'Total interchange_30d_avg',
                      'Pct_Solar_30d_avg',
                      'Pct_Wind_30d_avg',
                      'ALLSKY_SFC_SW_DWN_30d_avg',
                      'T2M_30d_avg',
-                     'WSC_30d_avg',
-                     'unexpect_dem_diff_30d_avg'
+                     'WSC_30d_avg'# ,
+                     # 'unexpect_dem_diff_30d_avg'
                      ]
         target_col = ['Total interchange']
         df_train = df_train.drop(drop_cols,axis=1)
@@ -122,8 +122,9 @@ def preprocess_RNN(DATA_DIR: Path, regions: list, seq_len: int = 24):
                                                                                 df_test,
                                                                                 target_col)
         print(f"shape of df_train: {df_train.shape}, df_train_scaled: {df_train_scaled.shape}")
-        feature_cols = [col for col in df_train_scaled.columns if col != target_col]
+        feature_cols = [col for col in df_train_scaled.columns if col not in target_col]
         print(f"feature cols: {feature_cols} \n and target_col: {target_col}")
+
         X_train, y_train = build_sequences(df_train_scaled, feature_cols, target_col, seq_len)
         X_val, y_val = build_sequences(df_val_scaled, feature_cols, target_col, seq_len)
         X_test, y_test = build_sequences(df_test_scaled, feature_cols, target_col, seq_len)
@@ -155,6 +156,7 @@ def preprocess_RNN(DATA_DIR: Path, regions: list, seq_len: int = 24):
                     np.save(out_path, split_df)
                     print(f"Saved: {out_path.name}")
 
+
     train_end = time.time()
 
     print(f"Total time for all selected regions: {train_end - train_start} seconds")
@@ -179,9 +181,9 @@ def main():
     print(f"Figures Directory: {FIG_DIR}")
 
     # 13 EIA region codes
-    regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
+    # regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
 
-    # regions = ['MIDW']
+    regions = ['MIDW', 'NW', 'NY']
 
     preprocess_RNN(DATA_DIR, regions, seq_len=24)
 

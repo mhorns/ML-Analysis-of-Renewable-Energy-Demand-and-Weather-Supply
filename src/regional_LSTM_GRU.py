@@ -15,7 +15,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras import regularizers
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, GRU, Dense, Dropout
+from tensorflow.keras import layers
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from keras.optimizers import Adam, RMSprop
 import keras_tuner as kt
@@ -35,7 +35,7 @@ def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test
 
     # Build model with variable type and unit structure
     model = Sequential()
-    RNN = LSTM if rnn_type.upper() == 'LSTM' else GRU
+    RNN = layers.LSTM if rnn_type.upper() == 'LSTM' else layers.GRU
 
     for i, units in enumerate(units_per_layer):
         return_seq = i < len(units_per_layer) - 1  # only last RNN layer should not return sequences
@@ -48,10 +48,10 @@ def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test
             model.add(RNN(units,
                           return_sequences=return_seq,
                           kernel_regularizer=regularizers.l2(l2_lambda)))
-        model.add(BatchNormalization())
-        model.add(Dropout(dropout))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Dropout(dropout))
 
-    model.add(Dense(1))
+    model.add(layers.Dense(1))
     model.compile(optimizer=optimizer, loss=loss)
 
     # Train model using validation data, early stopping and reduce learning rate on plateau
@@ -119,7 +119,7 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
         tf.keras.layers.Dense(128, activation='relu',
                               kernel_regularizer=regularizers.l2(l2_lambda)),
         tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Dropout(0.2),
 
         tf.keras.layers.Dense(64, activation='relu',
                               kernel_regularizer=regularizers.l2(l2_lambda)),
@@ -273,17 +273,17 @@ def main():
     print(f"Figures Directory: {FIG_DIR}")
 
     # 13 EIA region codes
-    regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
-    regions = ['MIDW', 'NW', 'NY']
+    regions = ['SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
+    # regions = ['MIDW', 'NW', 'NY']
 
     # Run both models for comparison
-    '''print("Running Base LSTM Model")
+    print("Running Base LSTM Model")
     run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=False,
-                            rnn_type='LSTM', units_per_layer=[128, 64, 32], epochs=30)'''
-
+                            rnn_type='LSTM', units_per_layer=[128, 64, 32], epochs=30, l2_lambda=0.0001)
+    '''
     print("Running Autoencoder Forecast Model")
-    run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=True, epochs=30, l2_lambda=0.001)
-
+    run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=True, epochs=30, l2_lambda=0.0001)
+    '''
 
 if __name__ == "__main__":
     main()
