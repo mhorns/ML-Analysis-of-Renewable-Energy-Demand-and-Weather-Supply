@@ -60,9 +60,9 @@ def main():
     FIG_DIR.mkdir(exist_ok=True)
     print(f"Figures Directory: {FIG_DIR}")
 
-    completed_regions = ['MIDW', 'NY', 'SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
+    completed_regions = ['MIDW', 'NW', 'NY', 'SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
 
-    regions = ['NW']
+    regions = ['CENT']
 
     for region in regions:
         evaluate_autoencoder(region, DATA_DIR, FIG_DIR)

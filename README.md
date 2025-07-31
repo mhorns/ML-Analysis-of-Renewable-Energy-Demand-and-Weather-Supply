@@ -36,6 +36,37 @@ pip install -r requirements.txt
 make all # runs sample or 'full' which creates whole pipeline over 40 minutes of downloads
 ```
 
+## Pipeline Workflow
+
+If you prefer to run components individually instead of using `make full`, follow this order:
+
+1. **Data Collection**  
+   `python src/get_data.py`
+
+2. **Preprocessing + Feature Engineering**  
+   `python src/preprocess_rnn.py`
+
+3. **Exploratory Data Analysis (EDA)**  
+   `python src/regional_EDA.py`
+
+4. **Model Training**  
+   - XGBoost: `python src/regional_XGBoost.py`  
+   - RNNs (LSTM/GRU): `python src/regional_LSTM_GRU.py`  
+   - Autoencoder: `python src/train_autoencoder.py`
+
+5. **Scenario Simulation & Evaluation**  
+   - Generate: `python src/run_scenario_analysis.py`  
+   - Visualize: `python src/visualize_scenarios.py`
+
+6. **Model Comparison**
+   `python src/naive_baseline_eval.py`
+   `python src/evaluate_autoencoder.py`
+   `python src/regional_model_comp.py`
+   `python src/evaluate_test_models.py`
+
+Each script supports modular experimentation and saves outputs to the `data/` and `figs/` folders.
+
+
 ## Data
 
 [US Energy Information Administration](https://www.eia.gov/opendata/)
