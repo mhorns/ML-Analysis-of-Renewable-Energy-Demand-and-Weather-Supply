@@ -8,11 +8,18 @@ import time
 from pathlib import Path
 import os
 import matplotlib.pyplot as plt
-import seaborn as sns; sns.set()
+import seaborn as sns;
+sns.set()
 from bs4 import BeautifulSoup
 
-def get_and_set_region_coordinates(iso_map:dict):
-    """Use Wikipedia to find the related largest airports for each EIA region by number of enplanements"""
+
+def get_and_set_region_coordinates(DATA_DIR: Path, iso_map: dict) -> pd.DataFrame:
+    """
+    Use Wikipedia and OurAirports data to identify the busiest airport in each EIA region.
+    :param DATA_DIR: Path where the output CSV with coordinates will be saved.
+    :param iso_map: Dictionary mapping US states to EIA regions.
+    :return: DataFrame containing busiest airport per region with lat/lon metadata.
+    """
     # Load tables into pandas
     url = "https://en.wikipedia.org/wiki/List_of_airports_in_the_United_States"
     tables = pd.read_html(url)
@@ -44,7 +51,7 @@ def get_and_set_region_coordinates(iso_map:dict):
         .astype(float)
     )
 
-    airport_df['State'] = airport_df['State'].str.title()  # Convert 'ALABAMA' → 'Alabama'
+    airport_df['State'] = airport_df['State'].str.title()  # Convert 'ALABAMA' to 'Alabama'
 
     url = "https://ourairports.com/data/airports.csv"
     our_airports_df = pd.read_csv(url)
@@ -76,10 +83,30 @@ def get_and_set_region_coordinates(iso_map:dict):
         .reset_index()
     )
 
+    # Save to csv
+    out_path = DATA_DIR / f"regional_airport_locale.csv"
+    if out_path.exists():
+        print(f"Skipping {out_path.name} (already exists)")
+    else:
+        busiest_by_region.to_csv(out_path, index=False)
+        print(f"Saved: {out_path}")
+
     return busiest_by_region
 
-def fetch_eia_data(base_url:str, API_KEY:str, region:list, start:datetime, end:datetime, extra_facets=None):
-    """Fetch paginated data from EIA API.  The EIA will only allow 5000 rows at a time"""
+
+def fetch_eia_data(base_url: str, API_KEY: str, region: list, start: datetime,
+                   end: datetime, extra_facets=None) -> pd.DataFrame:
+    """
+    Fetch paginated electricity data from the EIA API (max 5000 rows per request).
+
+    :param base_url: Base EIA API endpoint URL.
+    :param API_KEY: Your EIA API key.
+    :param region: List of region codes (e.g., ['NY', 'CAL']).
+    :param start: Start datetime for query window.
+    :param end: End datetime for query window.
+    :param extra_facets: Optional dict of additional API facets (e.g., {"fueltype": ["SUN"]}).
+    :return: DataFrame with the aggregated result.
+    """
     offset = 0
     length = 5000
     all_data = []
@@ -115,13 +142,22 @@ def fetch_eia_data(base_url:str, API_KEY:str, region:list, start:datetime, end:d
         offset += length
         total = int(result["response"]["total"])
         if offset >= total:
-            break  # Al data fetched
+            break  # All data fetched
 
     return pd.DataFrame(all_data)
 
 
-def save_combined_EIA_incl_solar_wind(DATA_DIR:Path, regions:list, API_KEY:str, start:datetime, end:datetime):
-    """This function will run the fetch_eia_data() function for both the base info and the solar/wind production info"""
+def save_combined_EIA_incl_solar_wind(DATA_DIR: Path, regions: list, API_KEY: str, start: datetime, end: datetime) -> None:
+    """
+    For each region, fetch electricity region data and solar/wind generation, merge them, and save to CSV.
+
+    :param DATA_DIR: Directory to save per-region merged CSVs.
+    :param regions: List of EIA region codes.
+    :param API_KEY: EIA API key string.
+    :param start: Start datetime.
+    :param end: End datetime.
+    :return: None
+    """
     # Keep track of how long download takes
     total_start = time.time()
     i = 0
@@ -188,16 +224,23 @@ def save_combined_EIA_incl_solar_wind(DATA_DIR:Path, regions:list, API_KEY:str, 
         print(f"Estimated total time: {est_total / 60:.2f} min | Remaining: {remaining / 60:.2f} min")
 
 
+def fetch_with_retry(url:str, params: dict, retries: int=8, delay: int=15) -> requests.Response:
+    """
+    Make a GET request with retry logic for NASA POWER API, which can timeout.
 
-def fetch_with_retry(url, params, retries=8, delay=15):
-    """This function inserts a try/except mechanism into getting the NASA POWER data as the API has timeout issues"""
+    :param url: URL endpoint to call.
+    :param params: Dictionary of query parameters.
+    :param retries: Maximum retry attempts.
+    :param delay: Delay in seconds between retries.
+    :return: Response object (if successful) or raises the final exception.
+    """
     for attempt in range(retries):
         try:
             response = requests.get(url, params=params, timeout=60)
             response.raise_for_status()
             return response
         except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt+1} failed: {e}")
+            print(f"Attempt {attempt + 1} failed: {e}")
             if attempt < retries - 1:
                 print(f"Retrying in {delay} seconds...")
                 time.sleep(delay)
@@ -205,8 +248,16 @@ def fetch_with_retry(url, params, retries=8, delay=15):
                 raise
 
 
-def save_NASA_weather_data(DATA_DIR:Path, busiest_by_region:pd.DataFrame, start:datetime, end:datetime):
-    """Go out to NASA POWER Project and get the weather data related to the regional coordinates"""
+def save_NASA_weather_data(DATA_DIR: Path, busiest_by_region: pd.DataFrame, start: datetime, end: datetime) -> None:
+    """
+    Download hourly weather data from NASA POWER API for each regional coordinate.
+
+    :param DATA_DIR: Output directory for saving CSVs.
+    :param busiest_by_region: DataFrame with Region, lat/lon information.
+    :param start: Start datetime for weather request window.
+    :param end: End datetime for weather request window.
+    :return: None
+    """
     # Keep track of how long download takes
     total_start = time.time()
     i = 0

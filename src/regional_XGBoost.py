@@ -21,7 +21,13 @@ import seaborn as sns; sns.set()
 from bs4 import BeautifulSoup
 
 def load_final_data(DATA_DIR: Path, region: str):
-    """Gets the finalized per region energy and weather data"""
+    """
+    Load finalized train, validation, and test datasets for a specific region.
+
+    :param DATA_DIR: Path to the directory containing the final CSVs.
+    :param region: Region code (e.g., 'NY', 'CAL') to load data for.
+    :return: train, validation, and test DataFrames.
+    """
     train_df = pd.read_csv(DATA_DIR / f"final_data_train_{region}.csv", parse_dates=["period"])
     val_df = pd.read_csv(DATA_DIR / f"final_data_val_{region}.csv", parse_dates=["period"])
     test_df = pd.read_csv(DATA_DIR / f"final_data_test_{region}.csv", parse_dates=["period"])
@@ -29,7 +35,13 @@ def load_final_data(DATA_DIR: Path, region: str):
     return train_df, val_df, test_df
 
 def XG_train_test_time_split(train_df: pd.DataFrame, val_df: pd.DataFrame):
-    """Creates the time based train/test split using supplied dates and drops non-numerical and cyclical features"""
+    """
+    Creates the time based train/test split using supplied dates and drops non-numerical and cyclical features
+
+    :param train_df: Training DataFrame including target column.
+    :param val_df: Validation DataFrame including target column.
+    :return: y_train, X_train, y_test, X_test as separate DataFrames.
+    """
     drop_cols = ['period', 'respondent', 'respondent-name', 'Region', 'MO', 'DY', 'HR', 'day_of_year', 'day_of_week']
     targ_col = ['Total interchange']
     XG_train = train_df.copy()
@@ -44,10 +56,18 @@ def XG_train_test_time_split(train_df: pd.DataFrame, val_df: pd.DataFrame):
 
     return y_train, X_train, y_test, X_test
 
-def fit_best_XG(param_grid: dict, X_train: pd.DataFrame, y_train: pd.DataFrame, n_splits=7):
-    """Use Time Series Split to perform GridSearchCV on given parameter grid"""
+def fit_best_XG(param_grid: dict, X_train: pd.DataFrame, y_train: pd.DataFrame, n_splits: int = 7) -> GridSearchCV:
+    """
+    Perform grid search with time series split cross-validation for XGBoost.
 
-    tscv = TimeSeriesSplit(n_splits=n_splits)  # default is 6 month windows
+    :param param_grid: Dictionary of XGBoost hyperparameters to search.
+    :param X_train: Feature matrix for training.
+    :param y_train: Target vector for training.
+    :param n_splits: Number of time-based splits for cross-validation.
+    :return: Fitted GridSearchCV object with best estimator.
+    """
+
+    tscv = TimeSeriesSplit(n_splits=n_splits)
 
     xgb = XGBRegressor(random_state=42)
 
@@ -69,8 +89,14 @@ def fit_best_XG(param_grid: dict, X_train: pd.DataFrame, y_train: pd.DataFrame, 
 
     return grid
 
-def safe_mape(y_true, y_pred):
-    """Safely calculate the MAPE when there are zeros"""
+def safe_mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """
+    Safely calculate Mean Absolute Percentage Error (MAPE), avoiding divide-by-zero.
+
+    :param y_true: True target values.
+    :param y_pred: Predicted target values.
+    :return: MAPE score as a percentage.
+    """
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
@@ -82,8 +108,17 @@ def safe_mape(y_true, y_pred):
     mape = np.mean(np.abs((y_pred[mask] - y_true[mask]) / y_true[mask])) * 100
     return mape
 
-def display_XG_analytics(region: str, best_model, X_test: pd.DataFrame, y_test: pd.DataFrame, FIG_DIR: Path):
-    """Calculate performance analytics for the best model from GirdSearchCV for train/test data"""
+def display_XG_analytics(region: str, best_model: XGBRegressor, X_test: pd.DataFrame, y_test: pd.DataFrame, FIG_DIR: Path):
+    """
+    Display performance metrics and save XGBoost feature importance plot.
+
+    :param region: Region name for labeling.
+    :param best_model: Fitted XGBoost model.
+    :param X_test: Test features.
+    :param y_test: Test targets.
+    :param FIG_DIR: Directory path to save the plot.
+    :return: RMSE, MAE, MAPE, and R2 scores.
+    """
     y_pred = best_model.predict(X_test)
     y_true = y_test.values.ravel()
 
@@ -107,7 +142,17 @@ def display_XG_analytics(region: str, best_model, X_test: pd.DataFrame, y_test: 
 
 def train_test_result_XGBoost(region: str, train_df: pd.DataFrame, val_df: pd.DataFrame, param_grid: dict,
                               DATA_DIR: Path, FIG_DIR: Path):
-    """Run the XGBoost pipeline for the given region and split dates"""
+    """
+    Train XGBoost with grid search and evaluate on validation data.
+
+    :param region: Region identifier.
+    :param train_df: Training DataFrame.
+    :param val_df: Validation DataFrame.
+    :param param_grid: Grid of hyperparameters for XGBoost.
+    :param DATA_DIR: Path to store model output.
+    :param FIG_DIR: Path to store visual output.
+    :return: Trained model, RMSE, MAE, MAPE, R2, and best params.
+    """
     y_train, X_train, y_val, X_val = XG_train_test_time_split(train_df, val_df)
     grid = fit_best_XG(param_grid, X_train, y_train, n_splits=7)
     best_model = grid.best_estimator_
@@ -117,7 +162,15 @@ def train_test_result_XGBoost(region: str, train_df: pd.DataFrame, val_df: pd.Da
     return best_model, rmse, mae, mape, r2, grid.best_params_
 
 def run_regional_XGBoost(DATA_DIR: Path, FIG_DIR: Path, regions: list, param_grid: dict):
-    """Parse through provided regions and run XGBoost for each while logging results in data frame for comparison"""
+    """
+    Parse through provided regions and run XGBoost for each while logging results in data frame for comparison
+
+    :param DATA_DIR: Path to dataset directory.
+    :param FIG_DIR: Path to save figures.
+    :param regions: List of region codes.
+    :param param_grid: Hyperparameter grid for model tuning.
+    :return: Summary DataFrame with results for all regions.
+    """
     train_start = time.time()
 
     results = []
@@ -155,7 +208,12 @@ def run_regional_XGBoost(DATA_DIR: Path, FIG_DIR: Path, regions: list, param_gri
     return results_df
 
 def create_feature_importance_heatmap_by_region(FIG_DIR: Path, results_df: pd.DataFrame):
-    """Creates normalized feature importance heat map by region"""
+    """
+    Creates normalized feature importance heat map by region
+
+    :param FIG_DIR: Path to save the heatmap image.
+    :param results_df: DataFrame with models and importance data.
+    """
     feature_df_list = []
 
     for i, row in results_df.iterrows():
@@ -188,7 +246,12 @@ def create_feature_importance_heatmap_by_region(FIG_DIR: Path, results_df: pd.Da
 
 
 def plot_XGBoost_analytics(FIG_DIR: Path, results_df: pd.DataFrame):
-    """Creates comparison plots for each region result evaluation metrics from best model as well as feature import"""
+    """
+    Creates comparison plots for each region result evaluation metrics from best model as well as feature import
+
+    :param FIG_DIR: Path to save visualizations.
+    :param results_df: DataFrame containing model metrics per region.
+    """
     results_df_sorted = results_df.sort_values(by="Region")
 
     fig, axes = plt.subplots(4, 1, figsize=(12, 10), sharex=True)

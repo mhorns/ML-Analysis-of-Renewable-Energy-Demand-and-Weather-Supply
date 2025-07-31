@@ -29,18 +29,40 @@ def load_model_metrics(DATA_DIR: Path):
 
     model_df = []
 
+    # Main RNN cycle results
     for type in types:
         for unit in units:
             df = pd.read_csv(DATA_DIR / f"{type}_{len(unit)}unit_train_results.csv")
             df['Model'] = f"{type}_{len(unit)}unit"
             model_df.append(df)
 
-    xgboost_df = pd.read_csv(DATA_DIR / f"XGBoost_train_results.csv")
-    xgboost_df = xgboost_df.drop(columns=['Best_Model'], errors='ignore')
-    xgboost_df['Model'] = str("XGBoost")
-    model_df.append(xgboost_df)
-    naive_df = pd.read_csv(DATA_DIR / f"naive_pred_results.csv")
-    model_df.append(naive_df)
+    # Four unit GRU experiment
+    gru_4_file_path = DATA_DIR / f"gru_4unit_train_results.csv"
+    if gru_4_file_path.exists():
+        four_unit_gru_df = pd.read_csv(gru_4_file_path)
+        four_unit_gru_df['Model'] = f"gru_4unit"
+        model_df.append(four_unit_gru_df)
+
+    # autoencoder experiment
+    ae_path = DATA_DIR / f"ae_3unit_train_results.csv"
+    if ae_path.exists():
+        ae_3unit_df = pd.read_csv(ae_path)
+        ae_3unit_df['Model'] = f"ae_3unit"
+        model_df.append(ae_3unit_df)
+
+    # XGBoost
+    xg_boost_path = DATA_DIR / f"XGBoost_train_results.csv"
+    if xg_boost_path.exists():
+        xgboost_df = pd.read_csv(xg_boost_path)
+        xgboost_df = xgboost_df.drop(columns=['Best_Model'], errors='ignore')
+        xgboost_df['Model'] = str("XGBoost")
+        model_df.append(xgboost_df)
+
+    # Naive baseline predictions
+    naive_path = DATA_DIR / f"naive_pred_results.csv"
+    if naive_path.exists():
+        naive_df = pd.read_csv(naive_path)
+        model_df.append(naive_df)
 
     summary_df = pd.concat(model_df, ignore_index=True)
     summary_df = summary_df[~summary_df.apply(lambda row: all(row == summary_df.columns), axis=1)]
@@ -58,6 +80,8 @@ def plot_model_metrics(FIG_DIR, summary_df):
         'LSTM_2unit': '#2171B5',  # blue
         'GRU_3unit': '#00441B',  # dark green
         'GRU_2unit': '#238B45',  # green
+        'gru_4unit': '#41ab5d',  # light green
+        'ae_3unit': '#e6550d',  # orange
         'XGBoost': '#7F2704',  # rust
         'Naive Pred': '#525252'  # gray
     }
@@ -103,7 +127,6 @@ def main():
 
     # 13 EIA region codes
     regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
-    # regions = ['MIDW']
 
     summary_df = load_model_metrics(DATA_DIR)
     plot_model_metrics(FIG_DIR, summary_df)
