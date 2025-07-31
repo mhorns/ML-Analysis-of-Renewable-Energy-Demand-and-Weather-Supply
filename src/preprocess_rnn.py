@@ -22,15 +22,29 @@ import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
 
 def load_final_data(DATA_DIR: Path, region: str):
-    """Gets the finalized per region energy and weather data"""
+    """
+    Load finalized train, validation, and test datasets for a specific region.
+
+    :param DATA_DIR: Path to the directory containing the final CSVs.
+    :param region: Region code (e.g., 'NY', 'CAL') to load data for.
+    :return: train, validation, and test DataFrames.
+    """
     train_df = pd.read_csv(DATA_DIR / f"final_data_train_{region}.csv", parse_dates=["period"])
     val_df = pd.read_csv(DATA_DIR / f"final_data_val_{region}.csv", parse_dates=["period"])
     test_df = pd.read_csv(DATA_DIR / f"final_data_test_{region}.csv", parse_dates=["period"])
 
     return train_df, val_df, test_df
 
-def build_sequences(df, feature_cols, target_col, window_size):
-    """Transforms a time series dataframe into sequences"""
+def build_sequences(df: pd.DataFrame, feature_cols: list, target_col: str, window_size: int):
+    """
+    Transform a time series DataFrame into sequences for RNN input.
+
+    :param df: DataFrame containing the full time series data.
+    :param feature_cols: List of columns to use as features.
+    :param target_col: Name of the target column to predict.
+    :param window_size: Number of time steps to include in each sequence.
+    :return: Tuple of (X, y) where X is 3D and y is 1D.
+    """
     print(f"Building sequences for window size: {window_size}")
     X, y = [], []
 
@@ -40,8 +54,17 @@ def build_sequences(df, feature_cols, target_col, window_size):
         y.append(df[target_col].iloc[i])
     return np.array(X), np.array(y)
 
-def scale_features(scaler, train_df, val_df, test_df, exclude_cols=None):
-    """Fits a selected scaler on training data, applies to train/val/test sets"""
+def scale_features(scaler: str, train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame, exclude_cols=None):
+    """
+    Fit a scaler on training data and apply it to train, val, and test sets.
+
+    :param scaler: Scaler name string, either 'StandardScaler()' or 'MinMaxScaler()'.
+    :param train_df: Training DataFrame.
+    :param val_df: Validation DataFrame.
+    :param test_df: Test DataFrame.
+    :param exclude_cols: Columns to exclude from scaling.
+    :return: Tuple of scaled train, val, test DataFrames, and the fitted scaler.
+    """
     if exclude_cols is None:
         exclude_cols = []
 
@@ -75,14 +98,21 @@ def scale_features(scaler, train_df, val_df, test_df, exclude_cols=None):
     return train_scaled, val_scaled, test_scaled, scaler
 
 def preprocess_RNN(DATA_DIR: Path, regions: list, seq_len: int = 24):
+    """
+    Preprocess energy and weather data for each region to prepare RNN training sequences.
+
+    :param DATA_DIR: Path to the directory where data and outputs are stored.
+    :param regions: List of region codes to preprocess.
+    :param seq_len: Number of timesteps in each input sequence window.
+    :return: None; saves processed arrays and scaler objects to disk.
+    """
     train_start = time.time()
 
     for region in tqdm(regions):
         print(f"\n--- Preprocessing data to implement RNN for {region} ---")
         df_train, df_val, df_test = load_final_data(DATA_DIR, region)
 
-        # Drop label cols and assign target
-        # drop_cols = ['period', 'respondent', 'respondent-name', 'Region']
+        # Drop label cols, unneeded features and assign target
         drop_cols = ['period',
                      'respondent',
                      'respondent-name',
@@ -181,9 +211,9 @@ def main():
     print(f"Figures Directory: {FIG_DIR}")
 
     # 13 EIA region codes
-    # regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
+    regions = ['MIDW', 'NW', 'NY', 'SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
 
-    regions = ['MIDW', 'NW', 'NY']
+    # regions = ['MIDW', 'NW', 'NY']
 
     preprocess_RNN(DATA_DIR, regions, seq_len=24)
 

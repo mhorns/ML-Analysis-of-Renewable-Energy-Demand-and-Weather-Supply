@@ -13,8 +13,14 @@ import seaborn as sns; sns.set()
 from bs4 import BeautifulSoup
 
 
-def load_and_merge_region_data(DATA_DIR: Path, region: str):
-    """Gets the per region energy and weather data and combines with feature engineering"""
+def load_and_merge_region_data(DATA_DIR: Path, region: str) -> pd.DataFrame:
+    """
+    Load EIA and NASA data for a region, merge them, and apply feature engineering.
+
+    :param DATA_DIR: Path to the directory containing EIA and weather CSV files.
+    :param region: Region identifier (e.g., "NY", "TEX").
+    :return: Merged and processed DataFrame.
+    """
     eia_df = pd.read_csv(DATA_DIR / f"eia_hourly_{region}.csv", parse_dates=["period"])
     weather_df = pd.read_csv(DATA_DIR / f"weather_power_{region}.csv", parse_dates=["datetime"])
 
@@ -31,8 +37,14 @@ def load_and_merge_region_data(DATA_DIR: Path, region: str):
 
     return df
 
-def add_calendar_features(df):
-    """Create new calendar features to account for seasonality and cycles"""
+def add_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add cyclical and calendar-based features to capture seasonality.
+
+    :param df: DataFrame with 'period', 'HR', and 'MO' columns.
+    :type df: pd.DataFrame
+    :return: DataFrame with added time-based features.
+    """
     # Cyclical encodings
     df['hour_sin'] = np.sin(2 * np.pi * df['HR'] / 24)
     df['hour_cos'] = np.cos(2 * np.pi * df['HR'] / 24)
@@ -53,8 +65,13 @@ def add_calendar_features(df):
 
     return df
 
-def add_pct_features(df):
-    """Create new percentage features for the renewables"""
+def add_pct_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add percentage-based features for renewable energy contributions.
+
+    :param df: DataFrame with 'Solar', 'Wind', and 'Net generation' columns.
+    :return: DataFrame with added Pct_Solar and Pct_Wind columns.
+    """
     # Fill missing values in Solar and Wind
     if 'Solar' not in df.columns:
         df['Solar'] = 0
@@ -72,8 +89,13 @@ def add_pct_features(df):
 
     return df
 
-def add_lag_features(df):
-    """Adding lagged features to enhance manchine learning at later steps"""
+def add_lag_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add lag and rolling mean features to support time series modeling.
+
+    :param df: Input DataFrame with time-indexed demand/generation columns.
+    :return: DataFrame with lagged and derived features.
+    """
     # Create lagged forecast from 24 hours ago
     df['DA_forecast_yesterday'] = df['Day-ahead demand forecast'].shift(24)
     df['unexpect_dem_diff'] = df['Demand'] - df['DA_forecast_yesterday']
@@ -86,23 +108,42 @@ def add_lag_features(df):
 
     return df
 
-def add_rolling_means(df, cols, window=720):
-    """Create rolling average features for window size based on hours"""
+def add_rolling_means(df: pd.DataFrame, cols: list, window: int=720) -> pd.DataFrame:
+    """
+       Add rolling average features for specified columns.
+
+       :param df: Input DataFrame.
+       :param cols: List of column names to apply the rolling mean to.
+       :param window: Rolling window size in hours (default 720 = 30 days).
+       :return: DataFrame with new rolling average columns.
+       """
     for col in cols:
         df[f'{col}_30d_avg'] = df[col].rolling(window=window, min_periods=1).mean()
 
     return df
 
 
-def drop_cols(df):
-    """Drop extra columns that are not needed or may cause leakage to target"""
+def drop_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Drop known leakage columns and rows with missing values.
+
+    :param df: DataFrame to be cleaned.
+    :return: Cleaned DataFrame.
+    """
     df = df.drop(['Demand', 'Net generation', 'datetime'], axis=1)
     df.dropna(inplace=True)
 
     return df
 
-def create_correlation_matrix(FIG_DIR: Path, region: str, df: pd.DataFrame):
-    """Create correlation matrix based on selected features"""
+def create_correlation_matrix(FIG_DIR: Path, region: str, df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate and save a correlation matrix heatmap of energy and weather features.
+
+    :param FIG_DIR: Directory where the correlation plot will be saved.
+    :param region: Region name for plot labeling.
+    :param df: DataFrame with selected input features.
+    :return: Feature correlation matrix.
+    """
     cols = [
         'ALLSKY_SFC_SW_DWN', 'T2M', 'WSC',  # Weather features
         'Solar', 'Wind', 'Pct_Solar', 'Pct_Wind',  # Generation + features
@@ -122,8 +163,15 @@ def create_correlation_matrix(FIG_DIR: Path, region: str, df: pd.DataFrame):
 
     return corr_matrix
 
-def create_EDA_plots(FIG_DIR: Path, region: str, df: pd.DataFrame):
-    """Create EDA plots of various interactions including heatmaps"""
+def create_EDA_plots(FIG_DIR: Path, region: str, df: pd.DataFrame) -> None:
+    """
+    Create and save multiple EDA plots showing energy-weather relationships.
+
+    :param FIG_DIR: Directory to save the plots.
+    :param region: Region name (used for titles and filenames).
+    :param df: DataFrame with raw and feature-engineered columns.
+    :return: None
+    """
     # Rolling demand over time
     plt.figure(figsize=(14, 5))
     plt.plot(df['datetime'], df['Demand'], label='Raw Demand', alpha=0.3)
@@ -178,8 +226,15 @@ def create_EDA_plots(FIG_DIR: Path, region: str, df: pd.DataFrame):
     plt.savefig(FIG_DIR / f'{region}_avg_hrly_solar_gen_by_month.png')
     plt.close()
 
-def split_and_save_data(df, DATA_DIR, region):
-    """Split df 70/20/10 and save to CSV unless they already exist."""
+def split_and_save_data(df: pd.DataFrame, DATA_DIR: Path, region: str) -> None:
+    """
+    Split the dataset into train, validation, and test sets, and save each as CSV.
+
+    :param df: Final processed DataFrame.
+    :param DATA_DIR: Directory to save the split files.
+    :param region: Region name used in filename.
+    :return: None
+    """
 
     n = len(df)
     splits = {
@@ -198,8 +253,15 @@ def split_and_save_data(df, DATA_DIR, region):
             print(f"Saved: {out_path.name}")
 
 
-def run_EDA(DATA_DIR: Path, FIG_DIR: Path, region: str):
-    """Run the whole EDA process from loading data, to feature engineering and plotting. Saves final csv for model"""
+def run_EDA(DATA_DIR: Path, FIG_DIR: Path, region: str) -> None:
+    """
+    Complete EDA pipeline for a given region: merge data, add features, generate plots, and save results.
+
+    :param DATA_DIR: Path to input/output data directory.
+    :param FIG_DIR: Path to output figures directory.
+    :param region: Region name code (e.g., "SE", "TEX").
+    :return: None
+    """
     # Load and merge region energy and weather data and engineer new features
     df = load_and_merge_region_data(DATA_DIR, region)
 

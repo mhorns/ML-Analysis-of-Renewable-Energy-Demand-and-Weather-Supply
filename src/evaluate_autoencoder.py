@@ -6,7 +6,15 @@ from sklearn.metrics import mean_squared_error
 from sklearn.manifold import TSNE
 import tensorflow as tf
 
-def evaluate_autoencoder(region, DATA_DIR, FIG_DIR):
+def evaluate_autoencoder(region: str, DATA_DIR: Path, FIG_DIR: Path):
+    """
+    Evaluate a trained autoencoder by visualizing reconstruction quality and error distribution.  Loads the saved
+    autoencoder and encoder models for a specific region. Uses the autoencoder to reconstruct the input validation
+    sequences.  Plots a few examples comparing the original vs reconstructed sequences.
+    :param region: Region identifier string (used to load model and data files).
+    :param DATA_DIR: Path to the directory containing model and validation data files.
+    :param FIG_DIR: Path to the directory where the output plots will be saved.
+    """
 
     autoencoder = tf.keras.models.load_model(DATA_DIR / f"{region}_autoencoder.h5")
     encoder = tf.keras.models.load_model(DATA_DIR / f"{region}_encoder.h5")
@@ -52,9 +60,9 @@ def main():
     FIG_DIR.mkdir(exist_ok=True)
     print(f"Figures Directory: {FIG_DIR}")
 
+    completed_regions = ['MIDW', 'NY', 'SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
 
-    # regions = ['MIDW', 'SE', 'NE', 'MIDA', 'NW', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'NY', 'TEN', 'TEX']
-    regions = ['MIDW', 'NW', 'NY']
+    regions = ['NW']
 
     for region in regions:
         evaluate_autoencoder(region, DATA_DIR, FIG_DIR)

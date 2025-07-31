@@ -24,14 +24,36 @@ import seaborn as sns; sns.set()
 
 
 def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
-                       region, rnn_type='LSTM', units_per_layer=[128, 64, 32],
-                       dropout=0.2, batch_size=64, epochs=20, loss='mse', optimizer='adam', l2_lambda=0.0):
-    """Trains an LSTM or GRU model with flexible architecture."""
+                       region, rnn_type='LSTM', units_per_layer=, dropout=0.1, batch_size=32, epochs=30,
+                       loss='mse', optimizer='adam', l2_lambda=0.0):
+    """
+    Train and evaluate an RNN (LSTM or GRU) model with a flexible architecture.
+
+    :param DATA_DIR: Path to save model and target scaler.
+    :param FIG_DIR: Path to save training loss plot.
+    :param X_train: Input sequence array for training (3D).
+    :param y_train: Target values for training.
+    :param X_val: Input sequence array for validation (3D).
+    :param y_val: Target values for validation.
+    :param X_test: Input sequence array for testing (3D).
+    :param y_test: Target values for testing.
+    :param region: Region identifier (e.g., 'NY', 'CAL').
+    :param rnn_type: Type of RNN to use ('LSTM' or 'GRU').
+    :param units_per_layer: List of integers defining the number of units in each RNN layer.
+    :param dropout: Dropout rate between layers.
+    :param batch_size: Number of samples per gradient update.
+    :param epochs: Number of training epochs.
+    :param loss: Loss function to optimize (e.g., 'mse').
+    :param optimizer: Optimizer to use (e.g., 'adam').
+    :param l2_lambda: L2 regularization strength.
+    :return: Trained model, RMSE, MAE, MAPE, R2 score).
+    """
     train_start = time.time()
     # Scale target using standard scaler to perform preds with zero mean and unit variance
     scaler_y = StandardScaler()
     y_train_scaled = scaler_y.fit_transform(y_train.reshape(-1, 1))
     y_val_scaled = scaler_y.transform(y_val.reshape(-1, 1))
+    joblib.dump(scaler_y, DATA_DIR / f"{region}_{rnn_type.lower()}_{len(units_per_layer)}unit_target_scaler.joblib")
 
     # Build model with variable type and unit structure
     model = Sequential()
@@ -101,7 +123,26 @@ def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test
 def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
                                      region, encoder, latent_dim=32, batch_size=64, epochs=20, loss='mse',
                                      optimizer='adam', l2_lambda=0.0):
-    """Trains a dense forecast model using latent inputs from an encoder"""
+    """
+    Trains a dense forecast model using latent inputs from an encoder
+    :param DATA_DIR: Path to save model and target scaler.
+    :param FIG_DIR: Path to save training loss plot.
+    :param X_train: Input sequence array for training (3D).
+    :param y_train: Target values for training.
+    :param X_val: Input sequence array for validation (3D).
+    :param y_val: Target values for validation.
+    :param X_test: Input sequence array for testing (3D).
+    :param y_test: Target values for testing.
+    :param region: Region identifier (e.g., 'NY', 'CAL').
+    :param encoder: Pre-trained encoder model that maps inputs to latent space.
+    :param latent_dim: Dimensionality of the latent space.
+    :param batch_size: Number of samples per gradient update.
+    :param epochs: Number of training epochs.
+    :param loss: Loss function to optimize (e.g., 'mse').
+    :param optimizer: Optimizer to use (e.g., 'adam').
+    :param l2_lambda: L2 regularization strength.
+    :return: Trained model, RMSE, MAE, MAPE, R2 score).
+    """
     train_start = time.time()
     # Encode inputs
     X_train_latent = encoder.predict(X_train)
@@ -112,6 +153,7 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
     scaler_y = StandardScaler()
     y_train_scaled = scaler_y.fit_transform(y_train.reshape(-1, 1))
     y_val_scaled = scaler_y.transform(y_val.reshape(-1, 1))
+    joblib.dump(scaler_y, DATA_DIR / f"{region}_ae_rnn_target_scaler.joblib")
 
     # Build forecast model from latent vector
     model = tf.keras.Sequential([
@@ -119,12 +161,12 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
         tf.keras.layers.Dense(128, activation='relu',
                               kernel_regularizer=regularizers.l2(l2_lambda)),
         tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dropout(0.1),
 
         tf.keras.layers.Dense(64, activation='relu',
                               kernel_regularizer=regularizers.l2(l2_lambda)),
         tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dropout(0.1),
 
         tf.keras.layers.Dense(32, activation='relu',
                               kernel_regularizer=regularizers.l2(l2_lambda)),
@@ -132,7 +174,7 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
     ])
     model.compile(optimizer=optimizer, loss=loss)
 
-    # Train
+    # Train model using validation data, early stopping and reduce learning rate on plateau
     history = model.fit(
         X_train_latent, y_train_scaled,
         validation_data=(X_val_latent, y_val_scaled),
@@ -170,7 +212,13 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
 
 
 def safe_mape(y_true, y_pred):
-    """Safely calculate the MAPE when there are zeros"""
+    """
+    Calculate Mean Absolute Percentage Error (MAPE) while safely handling zero targets.
+
+    :param y_true: Ground truth target values.
+    :param y_pred: Predicted values.
+    :return: MAPE as a percentage, or NaN if no valid denominator values exist.
+    """
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
@@ -182,11 +230,20 @@ def safe_mape(y_true, y_pred):
     mape = np.mean(np.abs((y_pred[mask] - y_true[mask]) / y_true[mask])) * 100
     return mape
 
-def plot_loss(FIG_DIR, history, region, rnn_type, units_per_layer):
-    """Plots training versus validation loss based on history file and saves in FIG_DIR"""
+def plot_loss(FIG_DIR: Path, history, region: str, rnn_type: str, units_per_layer: list):
+    """
+    Plot training and validation loss curves from model training history.
+
+    :param FIG_DIR: Directory where the plot should be saved.
+    :param history: History object from Keras model training.
+    :param region: Region label to annotate the plot filename.
+    :param rnn_type: RNN type string ('LSTM', 'GRU').
+    :param units_per_layer: List of unit counts used in each layer.
+    :return: None
+    """
     plt.plot(history.history['loss'], label='Training Loss')
     plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.title(f"{region} {rnn_type.upper()} {len(units_per_layer)} Unit Training vs Validation Loss")
+    plt.title(f"{region} {rnn_type.upper()} {units_per_layer} Unit Training vs Validation Loss")
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
     plt.legend()
@@ -195,10 +252,26 @@ def plot_loss(FIG_DIR, history, region, rnn_type, units_per_layer):
     plt.close()
 
 def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, use_autoencoder=False, rnn_type='LSTM',
-                     units_per_layer=[128, 64, 32], dropout=0.2, batch_size=32, epochs=20, loss='mse',
+                     units_per_layer: list, dropout=0.1, batch_size=32, epochs=20, loss='mse',
                      optimizer='adam', l2_lambda=0.0):
-    """Runs RNN training process for each region by importing the scaled train/val/test sets and scaler, and
-    running it through the model building train and evaluate helper"""
+    """
+    Runs RNN training process for each region by importing the scaled train/val/test sets and scaler, and
+    running it through the model building train and evaluate helper
+    :param DATA_DIR: Path to save model and target scaler.
+    :param FIG_DIR: Path to save training loss plot.
+    :param regions: List of region names to process.
+    :param use_autoencoder: Whether to use encoder-based latent forecaster.
+    :param rnn_type: Type of RNN to use ('LSTM' or 'GRU').
+    :param units_per_layer: List of integers defining the number of units in each RNN layer.
+    :param dropout: Dropout rate between layers.
+    :param batch_size: Number of samples per gradient update.
+    :param epochs: Number of training epochs.
+    :param loss: Loss function to optimize (e.g., 'mse').
+    :param optimizer: Optimizer to use (e.g., 'adam').
+    :param l2_lambda: L2 regularization strength.
+    :return: DataFrame of evaluation metrics for all regions.
+    """
+
     train_start = time.time()
 
     results = []
@@ -273,17 +346,22 @@ def main():
     print(f"Figures Directory: {FIG_DIR}")
 
     # 13 EIA region codes
-    regions = ['SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
-    # regions = ['MIDW', 'NW', 'NY']
+    completed = []
+    regions = ['MIDW', 'NW', 'NY', 'SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
+
 
     # Run both models for comparison
-    print("Running Base LSTM Model")
-    run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=False,
-                            rnn_type='LSTM', units_per_layer=[128, 64, 32], epochs=30, l2_lambda=0.0001)
-    '''
+    print("Running Base LSTM/GRU Model")
+    units = [[128, 64, 32], [64, 32]]
+    types = ['LSTM', 'GRU']
+
+    for unit in units:
+        for type in types:
+            run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=False,
+                                            rnn_type=type, units_per_layer=unit, epochs=30, l2_lambda=0.0001)
+
     print("Running Autoencoder Forecast Model")
     run_regional_rnn(DATA_DIR, FIG_DIR, regions, use_autoencoder=True, epochs=30, l2_lambda=0.0001)
-    '''
 
 if __name__ == "__main__":
     main()

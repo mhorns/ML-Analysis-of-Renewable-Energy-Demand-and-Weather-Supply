@@ -143,9 +143,14 @@ more balanced.
 
 ## Status
 
-In progress.  Data generation, preprocessing and EDA complete.  XGBoost model has been implemented with some preliminary 
-results.  
-
+* Data Collection
+* Feature Engineering
+* EDA and Visualizations
+* XGBoost Training 
+* Recurrent Neural Network Models Training and Tuning
+* Autoencoder Trained and Tuned -> Fed Through RNN
+* Best Model Selected and Visualized
+* Scenario Simulations with Best Model
 
 ## Analysis
 
@@ -207,6 +212,11 @@ likely perform better with more data to deal with seasonal annual trends.
 
 
 ## Future Considerations
+- Model interpretability (SHAP, PDP)
+- Enhance autoencoder sequence to lengthen/shorten or adapt to regional nuance
+- Cost-benefit layer for regional investment strategy
+- Geographical analysis for locations to add capacity
+- Explore seasonal battery/storage strategies
 
 ### Contributors
 
