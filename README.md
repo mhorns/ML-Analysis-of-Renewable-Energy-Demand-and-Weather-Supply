@@ -234,7 +234,16 @@ with consistent tabular data, idiosyncrasies in regional data perturbing the wei
 only having 5 years of total data for training.  The RNNs would likely perform better with more data to deal with 
 seasonal annual trends. 
 
+An example of the RNN training loss is below.  For the Midwest region we can see the loss curve on the 3 layer LSTM model.  
+The training loss and validation loss decrease fairly consistently.  We can see some evidence of slight overfitting by the 
+validation loss curve going through some light peaks and valleys as it gets to its minimum before increasing.  This 
+caused an early stoppage in our training despite having some regularization and dropout configurations.
 ![Midwest Best RNN Model](figs/MIDW_lstm_3unit_loss_plot.png)
+
+The below reconstruction plot from the training of the autoencoder shows how well the autoencoder was able to reconstruct
+the full original feature space in blue, overlaid by orange.  This reconstruction looks fine but the performance of the
+model once driven through the RNN to make forecasts was very weak.  Even with hyperband tuning much more training time, data and 
+compute resources were likely needed to get close to acceptable performance.
 ![Midwest Reconstruction of Latent Dimensions by Autoencoder](figs/Reconstruction_Validation_Sample_MIDW_0.png)
 
 ![Compare All Model RMSE Barplot](figs/Compare_model_RMSE_barplot_plot.png)
@@ -252,8 +261,6 @@ and impacts.
 [Scenario Interchange Map](https://mhorns.github.io/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply/scenario_interchange_map.html)
 
 [Weather Interactive Map](https://mhorns.github.io/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply/weather_interactive_map.html)
-
-
 
 ## Future Considerations
 - Model interpretability (SHAP, PDP)
