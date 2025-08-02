@@ -1,24 +1,14 @@
 import pandas as pd
 import numpy as np
 import random
-import re
-import requests
-from io import StringIO
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
 import time
-import os
-from tqdm import tqdm
 from pathlib import Path
-import statsmodels.api as sm
 from xgboost import XGBRegressor
 from xgboost import plot_importance
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
-from bs4 import BeautifulSoup
 
 def load_final_data(DATA_DIR: Path, region: str):
     """

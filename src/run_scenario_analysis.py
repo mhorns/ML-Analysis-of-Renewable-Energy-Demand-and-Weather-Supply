@@ -119,13 +119,14 @@ def recompute_pct_features(row: pd.Series, original_row: pd.Series = None) -> pd
     :param original_row: Original row used to calculate deltas for moving averages.
     :return: Updated row with recomputed percent features.
     """
-    # Apply percent scaling (×100) to match original preprocessing
+    # Apply percent scaling ×100 to match original preprocessing
     if 'Solar' in row and 'Net_generation_lag_1' in row:
         row['Pct_Solar'] = (row['Solar'] / row['Net_generation_lag_1']) * 100 if row['Net_generation_lag_1'] != 0 else 0
 
     if 'Wind' in row and 'Net_generation_lag_1' in row:
         row['Pct_Wind'] = (row['Wind'] / row['Net_generation_lag_1']) * 100 if row['Net_generation_lag_1'] != 0 else 0
 
+    # Recalculate 30 day average with new data
     if original_row is not None:
         if 'Solar' in row and 'Solar_30d_avg' in row and 'Pct_Solar_30d_avg' in original_row:
             orig_ratio = original_row['Pct_Solar_30d_avg']
@@ -174,8 +175,10 @@ def run_scenario_analysis(DATA_DIR: Path, region: str):
         # Save original solar/wind
         original_solar = full_row.get("Solar", np.nan)
         original_sol_pct = full_row.get("Pct_Solar", np.nan)
+        original_sun_irr = full_row.get("ALLSKY_SFC_SW_DWN", np.nan)
         original_wind = full_row.get("Wind", np.nan)
         original_wind_pct = full_row.get("Pct_Wind", np.nan)
+        original_wind_speed = full_row.get("WSC", np.nan)
 
         # Drop non-feature columns before prediction
         feature_row = full_row.drop([
@@ -226,10 +229,12 @@ def run_scenario_analysis(DATA_DIR: Path, region: str):
                 "Original Interchange": full_row['Total interchange'],
                 "Original Solar": original_solar,
                 "Modified Solar": mod_solar,
+                "Solar Irradiance": original_sun_irr,
                 "Original Pct Solar": original_sol_pct,
                 "Modified Solar Pct": mod_sol_pct,
                 "Original Wind": original_wind,
                 "Modified Wind": mod_wind,
+                "Wind Speed": original_wind_speed,
                 "Original Pct Wind": original_wind_pct,
                 "Modified Wind Pct": mod_wind_pct,
                 "Baseline Prediction": base_pred,

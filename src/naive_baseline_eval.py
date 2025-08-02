@@ -1,25 +1,9 @@
 import pandas as pd
 import numpy as np
-import tensorflow as tf
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-import time
-import os
-import joblib
-from tqdm import tqdm
 from pathlib import Path
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from keras.optimizers import Adam, RMSprop
-import keras_tuner as kt
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
-
 
 
 def load_final_data(DATA_DIR: Path, region: str):

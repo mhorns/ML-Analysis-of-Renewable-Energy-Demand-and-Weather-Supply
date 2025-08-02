@@ -6,7 +6,7 @@ weather and demand data to identify underserved regions with investment potentia
 ## Goal
 - Merge and align hourly weather, solar/wind generation, and demand data
 - Identify temporal and geographic mismatches
-- Use clustering and predictive models to support planning for solar/wind investment
+- Use predictive models to analyze potential for solar/wind investment
 
 ## Setup
 To get a local copy of the project:
@@ -31,38 +31,41 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Run sample pipeline
+Use Make file to generate samples of the data to test requirements or other workflows in the below full pipeline
+### 4. Run sample pipeline to get data
 ```bash
 make all # runs sample or 'full' which creates whole pipeline over 40 minutes of downloads
 ```
 
 ## Pipeline Workflow
 
-If you prefer to run components individually instead of using `make full`, follow this order:
+If you prefer to run components individually instead of using `make full`, follow this order.  Sample files are for 
+single region so model training and analysis will need to adjust regions being passed through main().  Full data 
+workflow and pipeline is listed below.
 
 1. **Data Collection**  
    `python src/get_data.py`
 
-2. **Preprocessing + Feature Engineering**  
-   `python src/preprocess_rnn.py`
-
-3. **Exploratory Data Analysis (EDA)**  
+2. **Exploratory Data Analysis (EDA) and Feature Engineering**  
    `python src/regional_EDA.py`
+
+3. **Extra Preprocessing for Recurrent Neural Network and Autoencoder Implementation**  
+   `python src/preprocess_rnn.py`
 
 4. **Model Training**  
    - XGBoost: `python src/regional_XGBoost.py`  
-   - RNNs (LSTM/GRU): `python src/regional_LSTM_GRU.py`  
-   - Autoencoder: `python src/train_autoencoder.py`
+   - RNNs (LSTM/GRU - can be run with or without below autoencoder): `python src/regional_LSTM_GRU.py`  
+   - Autoencoder (rerun above RNN to train over dataset to forecast): `python src/train_autoencoder.py`
 
-5. **Scenario Simulation & Evaluation**  
-   - Generate: `python src/run_scenario_analysis.py`  
-   - Visualize: `python src/visualize_scenarios.py`
+5. **Model Comparison**
+   - Generate naive forecast using prior 24 hour lag as predictor: `python src/naive_baseline_eval.py`
+   - Generate plots to confirm autoencoder reconstruction performance before using in RNN: `python src/evaluate_autoencoder.py`
+   - Compare all the trained models on validation data: `python src/regional_model_comp.py`
+   - Compare trained models on test data for further performance generalization: `python src/evaluate_test_models.py`
 
-6. **Model Comparison**
-   `python src/naive_baseline_eval.py`
-   `python src/evaluate_autoencoder.py`
-   `python src/regional_model_comp.py`
-   `python src/evaluate_test_models.py`
+6. **Scenario Simulation & Evaluation**  
+   - Generate scenarios to test hypotheses surrounding increased generation: `python src/run_scenario_analysis.py`  
+   - Visualize interactive plots for net interchange and weather scenarios: `python src/visualize_scenarios.py`
 
 Each script supports modular experimentation and saves outputs to the `data/` and `figs/` folders.
 
@@ -153,12 +156,6 @@ These files are then merged together by the date time to make a wide table for u
 granular details on the merging and feature engineering are contained in the code and described later as part of 
 Exploratory Data Analysis.
 
-## Running The Code
-
-The code can be run via a Make file.  At present there are three files: (1) gathers the data from EIA.gov and NASA.gov,
-(2) performs some Exploratory Data Analysis and generates from interesting graphics for each region, (3) performs some 
-model fitting for the regional data to execute a grid search for best model parameters for XGBoost on the compiled data.
-
 ## Methods
 
 Our target variable for modeling is the "Total Interchange", the amount one region exceeds or fails to meet the energy 
@@ -231,15 +228,24 @@ meet its own demand. Feature importance for each region also shows some divergen
 
 ![XGBoost Feature Importance by Region](figs/XGBoost_feature_importance_region.png)
 
-We have trained LSTM and GRU recurrent neural networks and have been unable to achieve success so far exceeding XGBoost's 
-learned performance due to its strong capabilities with consistent tabular data, idiosyncrasies in regional data 
-perturbing the weights calculations in RNNs as well as only having 5 years of total data for training.  The RNNs would 
-likely perform better with more data to deal with seasonal annual trends. 
+We have trained LSTM and GRU recurrent neural networks (including adding an autoencoder component to perform latent dimension reduction) 
+and have been unable to achieve success so far exceeding XGBoost's learned performance due to its strong capabilities 
+with consistent tabular data, idiosyncrasies in regional data perturbing the weights calculations in RNNs as well as 
+only having 5 years of total data for training.  The RNNs would likely perform better with more data to deal with 
+seasonal annual trends. 
+
+![Midwest Best RNN Model](figs/MIDW_lstm_3unit_loss_plot.png)
+![Midwest Reconstruction of Latent Dimensions by Autoencoder](figs/Reconstruction_Validation_Sample_MIDW_0.png)
 
 ![Compare All Model RMSE Barplot](figs/Compare_model_RMSE_barplot_plot.png)
 ![Compare All Model MAE Barplot](figs/Compare_model_MAE_barplot_plot.png)
 ![Compare All Model MAPE Barplot](figs/Compare_model_MAPE_barplot_plot.png)
 ![Compare All Model R2 Barplot](figs/Compare_model_R2_barplot_plot.png)
+
+### Scenario Analysis
+
+!figs/scenario_interchange_map.html
+!figs/weather_interactive_map.html
 
 
 ## Future Considerations

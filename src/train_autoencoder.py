@@ -3,7 +3,6 @@ import numpy as np
 import random
 import json
 import time
-import joblib
 from tensorflow.keras import regularizers
 import tensorflow as tf
 from tensorflow.keras import layers, models, callbacks
@@ -233,8 +232,8 @@ def main():
     print(f"HP Directory: {hp_path}")
     best_hp_dict = load_best_hyperparams(hp_path)
 
-    completed_regions = ['SE', 'NE', 'MIDA', 'MIDW', 'NY', 'CENT', 'NW', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
-    regions = ['CENT']
+    completed_regions = []
+    regions = ['SE', 'NE', 'MIDA', 'MIDW', 'NY', 'CENT', 'NW', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
     regions_left = []
 
     latent_dim_params = [64, 128, 256]
@@ -243,7 +242,7 @@ def main():
 
     for region in regions:  # The Keras tuner gets the best parameters but for some reason does not reconstruct correctly
         # Get best params from Keras tuner
-        # train_autoencoder_tuner(DATA_DIR, region, latent_dim_params, dropout_params, l2_params)
+        train_autoencoder_tuner(DATA_DIR, region, latent_dim_params, dropout_params, l2_params)
 
         # Load saved tuned parameters to manually train
         print(f"\nTraining {region} with best tuner parameters")

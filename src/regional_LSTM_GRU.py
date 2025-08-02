@@ -2,29 +2,22 @@ import pandas as pd
 import numpy as np
 import random
 import tensorflow as tf
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
 import time
-import os
 import joblib
 from tqdm import tqdm
 from pathlib import Path
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras import regularizers
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from keras.optimizers import Adam, RMSprop
-import keras_tuner as kt
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
 
 
 def train_evaluate_rnn(DATA_DIR, FIG_DIR, X_train, y_train, X_val, y_val, X_test, y_test,
-                       region, rnn_type='LSTM', units_per_layer=, dropout=0.1, batch_size=32, epochs=30,
+                       region, rnn_type='LSTM', units_per_layer=[128, 64, 32], dropout=0.1, batch_size=32, epochs=30,
                        loss='mse', optimizer='adam', l2_lambda=0.0):
     """
     Train and evaluate an RNN (LSTM or GRU) model with a flexible architecture.
@@ -206,7 +199,7 @@ def train_evaluate_latent_forecaster(DATA_DIR, FIG_DIR, X_train, y_train, X_val,
 
     train_end = time.time()
 
-    print(f"Total time for training region: {train_end - train_start} seconds")
+    print(f"Total time for training region {region}: {train_end - train_start} seconds")
 
     return model, rmse, mae, mape, r2
 
@@ -252,7 +245,7 @@ def plot_loss(FIG_DIR: Path, history, region: str, rnn_type: str, units_per_laye
     plt.close()
 
 def run_regional_rnn(DATA_DIR: Path, FIG_DIR: Path, regions: list, use_autoencoder=False, rnn_type='LSTM',
-                     units_per_layer: list, dropout=0.1, batch_size=32, epochs=20, loss='mse',
+                     units_per_layer=[128, 64, 32], dropout=0.1, batch_size=32, epochs=20, loss='mse',
                      optimizer='adam', l2_lambda=0.0):
     """
     Runs RNN training process for each region by importing the scaled train/val/test sets and scaler, and
@@ -348,7 +341,6 @@ def main():
     # 13 EIA region codes
     completed = []
     regions = ['MIDW', 'NW', 'NY', 'SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
-
 
     # Run both models for comparison
     print("Running Base LSTM/GRU Model")

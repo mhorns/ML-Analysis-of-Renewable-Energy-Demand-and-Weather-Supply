@@ -1,16 +1,9 @@
 import pandas as pd
 import numpy as np
-import re
-import requests
-from io import StringIO
 from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-import time
 from pathlib import Path
-import os
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
-from bs4 import BeautifulSoup
 
 
 def load_and_merge_region_data(DATA_DIR: Path, region: str) -> pd.DataFrame:

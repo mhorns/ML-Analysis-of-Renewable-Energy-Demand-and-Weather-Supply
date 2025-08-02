@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 from sklearn.metrics import mean_squared_error
-from sklearn.manifold import TSNE
 import tensorflow as tf
+
 
 def evaluate_autoencoder(region: str, DATA_DIR: Path, FIG_DIR: Path):
     """
@@ -60,9 +60,9 @@ def main():
     FIG_DIR.mkdir(exist_ok=True)
     print(f"Figures Directory: {FIG_DIR}")
 
-    completed_regions = ['MIDW', 'NW', 'NY', 'SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
+    completed_regions = []
 
-    regions = ['CENT']
+    regions = ['MIDW', 'NW', 'NY', 'SE', 'NE', 'MIDA', 'CENT', 'SW', 'CAR', 'CAL', 'FLA', 'TEN', 'TEX']
 
     for region in regions:
         evaluate_autoencoder(region, DATA_DIR, FIG_DIR)
