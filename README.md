@@ -242,10 +242,15 @@ seasonal annual trends.
 ![Compare All Model MAPE Barplot](figs/Compare_model_MAPE_barplot_plot.png)
 ![Compare All Model R2 Barplot](figs/Compare_model_R2_barplot_plot.png)
 
-### Scenario Analysis
+### Scenario Analysis Interactive Maps
+Lastly, we take the best model, XGBoost and we performed some scenario analysis to reframe the prediction process and 
+inject higher supply of solar and wind scenarios to see how the net interchange for each region would be impacted.  As shown
+in the feature importance map above, these features can sometimes be muted in the signal or could be negatively or
+anti-correlated if there are low baseline values.  Below are links to interactive maps using Plotly to view the scenarios
+and impacts.
 
-!figs/scenario_interchange_map.html
-!figs/weather_interactive_map.html
+- [Solar & Wind Weather Map](https://mhorns.github.io/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply/figs/weather_interactive_map.html)
+- [Power Interchange Scenario Map](https://mhorns.github.io/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply/figs/scenario_interchange_map.html)
 
 
 ## Future Considerations

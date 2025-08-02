@@ -28,8 +28,12 @@ figs/*
 !figs/Compare_model_R2_barplot_plot.png
 !figs/MIDW_lstm_3unit_loss_plot.png
 !figs/Reconstruction_Validation_Sample_MIDW_0.png
-!figs/scenario_interchange_map.html
-!figs/weather_interactive_map.html
+
+# Ignore all docs
+docs/*
+# But keep these for pages
+!docs/scenario_interchange_map.html
+!docs/weather_interactive_map.html
 
 # Python + OS junk
 __pycache__/

@@ -431,6 +431,11 @@ def main():
     FIG_DIR.mkdir(exist_ok=True)
     print(f"Figures Directory: {FIG_DIR}")
 
+    # Path to the docs directory at the same level as 'src'
+    DOC_DIR = BASE_DIR / "docs"
+    DOC_DIR.mkdir(exist_ok=True)
+    print(f"Figures Directory: {DOC_DIR}")
+
     COORDS_FILE = DATA_DIR / "regional_airport_locale.csv"
     print(f"Coordinates File: {COORDS_FILE}")
 
@@ -443,12 +448,12 @@ def main():
     plot_static_weather_map(df_all, "Wind Speed", FIG_DIR)
 
     # Plot interactive weather scenario map
-    weather_scenario_file = FIG_DIR / "weather_interactive_map.html"
+    weather_scenario_file = DOC_DIR / "weather_interactive_map.html"
     metric_cols = ["Solar Irradiance", "Wind Speed"]
     build_interactive_weather_map(df_all, metric_cols, weather_scenario_file)
 
     # Plot interactive interchange scenario map
-    interchange_scenario_file = FIG_DIR / "scenario_interchange_map.html"
+    interchange_scenario_file = DOC_DIR / "scenario_interchange_map.html"
     build_scenario_figure(df_all, interchange_scenario_file)
 
 
