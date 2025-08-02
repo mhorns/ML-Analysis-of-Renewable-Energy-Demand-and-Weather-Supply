@@ -249,8 +249,10 @@ in the feature importance map above, these features can sometimes be muted in th
 anti-correlated if there are low baseline values.  Below are links to interactive maps using Plotly to view the scenarios
 and impacts.
 
-- [Solar & Wind Weather Map](https://mhorns.github.io/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply/figs/weather_interactive_map.html)
-- [Power Interchange Scenario Map](https://mhorns.github.io/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply/figs/scenario_interchange_map.html)
+[Scenario Interchange Map](https://mhorns.github.io/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply/scenario_interchange_map.html)
+
+[Weather Interactive Map](https://mhorns.github.io/ML-Analysis-of-Renewable-Energy-Demand-and-Weather-Supply/weather_interactive_map.html)
+
 
 
 ## Future Considerations

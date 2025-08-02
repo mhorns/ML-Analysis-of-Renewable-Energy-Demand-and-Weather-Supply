@@ -32,6 +32,7 @@ figs/*
 # Ignore all docs
 docs/*
 # But keep these for pages
+!docs/index.html
 !docs/scenario_interchange_map.html
 !docs/weather_interactive_map.html
 
