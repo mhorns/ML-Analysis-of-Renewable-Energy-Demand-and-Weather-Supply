@@ -20,23 +20,23 @@ data/*
 # Ignore all figures
 figs/*
 # But keep these samples
-!figs/MIDW_correl_matrix.png
-!figs/MIDW_t2m_vs_energy_demand.png
-!figs/MIDW_demand_over_time.png
-!figs/MIDW_avg_hrly_demand_by_month.png
-!figs/MIDW_avg_hrly_solar_gen_by_month.png
-!figs/MIDW_avg_hrly_wind_gen_by_month.png
-!figs/MIDW_sol_gen_vs_sol_irr.png
-!figs/MIDW_wnd_gen_vs_wnd_speed.png
-!figs/Naive_pred_results_by_region.png
-!figs/XGBoost_train_results_by_region.png
-!figs/XGBoost_feature_importance_region.png
-!figs/Compare_model_RMSE_barplot_plot.png
-!figs/Compare_model_MAE_barplot_plot.png
-!figs/Compare_model_MAPE_barplot_plot.png
-!figs/Compare_model_R2_barplot_plot.png
-!figs/MIDW_lstm_3unit_loss_plot.png
-!figs/Reconstruction_Validation_Sample_MIDW_0.png
+# !figs/MIDW_correl_matrix.png
+# !figs/MIDW_t2m_vs_energy_demand.png
+# !figs/MIDW_demand_over_time.png
+# !figs/MIDW_avg_hrly_demand_by_month.png
+# !figs/MIDW_avg_hrly_solar_gen_by_month.png
+# !figs/MIDW_avg_hrly_wind_gen_by_month.png
+# !figs/MIDW_sol_gen_vs_sol_irr.png
+# !figs/MIDW_wnd_gen_vs_wnd_speed.png
+# !figs/Naive_pred_results_by_region.png
+# !figs/XGBoost_train_results_by_region.png
+# !figs/XGBoost_feature_importance_region.png
+# !figs/Compare_model_RMSE_barplot_plot.png
+# !figs/Compare_model_MAE_barplot_plot.png
+# !figs/Compare_model_MAPE_barplot_plot.png
+# !figs/Compare_model_R2_barplot_plot.png
+# !figs/MIDW_lstm_3unit_loss_plot.png
+# !figs/Reconstruction_Validation_Sample_MIDW_0.png
 
 # Ignore all docs
 docs/*
