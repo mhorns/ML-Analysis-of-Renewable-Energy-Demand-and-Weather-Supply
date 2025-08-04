@@ -7,12 +7,6 @@ data/*
 !data/final_data_val_MIDW.csv
 !data/weather_power_MIDW.csv
 !data/eia_hourly_MIDW.csv
-!data/rnn_data_X_test_MIDW.npy
-!data/rnn_data_X_train_MIDW.npy
-!data/rnn_data_X_val_MIDW.npy
-!data/rnn_data_y_test_MIDW.npy
-!data/rnn_data_y_train_MIDW.npy
-!data/rnn_data_y_val_MIDW.npy
 !data/rnn_scaler_MIDW.joblib
 !data/MIDW_lstm_3unit_model.h5
 !data/MIDW_lstm_3unit_target_scaler.joblib
