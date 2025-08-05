@@ -396,7 +396,7 @@ def main():
     }
 
     # Get coordinates for largest airports in each ISO region
-    busiest_by_region = get_and_set_region_coordinates(iso_map)
+    busiest_by_region = get_and_set_region_coordinates(DATA_DIR, iso_map)
 
     # Filter for just MIDW region as test and EDA
     busiest_by_region = busiest_by_region.loc[busiest_by_region['Region'] == 'MIDW']
