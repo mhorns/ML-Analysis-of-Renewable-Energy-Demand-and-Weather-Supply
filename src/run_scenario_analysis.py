@@ -202,9 +202,9 @@ def run_scenario_analysis(DATA_DIR: Path, region: str):
                     'Difference': modified_row - feature_row
                 }).dropna()
                 df_compare = full_compare.copy()
-                df_compare['Scenario Label'] = label  # <-- this adds the label
-                df_compare['Scenario Type'] = scenario_name  # Optional: also add scenario type
-                df_compare['Feature'] = df_compare.index  # Keep feature name before reset
+                df_compare['Scenario Label'] = label
+                df_compare['Scenario Type'] = scenario_name
+                df_compare['Feature'] = df_compare.index
 
                 # Reset index to preserve feature names in the CSV
                 df_compare = df_compare.reset_index(drop=True)
